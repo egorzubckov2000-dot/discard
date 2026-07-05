@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Дискард — Firebase чат</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, sans-serif; }
+    body { background: #1e1f22; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 16px; }
+    .discard-container { max-width: 600px; width: 100%; background: #2b2d31; border-radius: 28px; box-shadow: 0 12px 40px rgba(0,0,0,0.6); overflow: hidden; display: flex; flex-direction: column; height: 700px; }
+    .discard-header { background: #1e1f22; padding: 18px 24px; border-bottom: 1px solid #3a3c42; display: flex; justify-content: space-between; align-items: center; }
+    .discard-header h1 { color: #f2f3f5; font-size: 22px; font-weight: 700; }
+    .discard-header h1 span { color: #7289da; }
+    .sync-badge { background: #3a3c42; color: #b5bac1; padding: 6px 14px; border-radius: 40px; font-size: 13px; font-weight: 500; cursor: default; border: 1px solid transparent; }
+    .sync-badge.online { background: #3a7c5a; color: #c3f0d4; border-color: #58b383; }
+    .discard-chat { flex: 1; overflow-y: auto; padding: 20px 18px 12px; display: flex; flex-direction: column; gap: 6px; background: #2b2d31; scroll-behavior: smooth; }
+    .discard-chat::-webkit-scrollbar { width: 6px; }
+    .discard-chat::-webkit-scrollbar-thumb { background: #4e5058; border-radius: 10px; }
+    .message { display: flex; flex-direction: column; max-width: 88%; padding: 10px 16px; border-radius: 18px; background: #383a40; color: #dbdee1; font-size: 15px; line-height: 1.5; word-wrap: break-word; box-shadow: 0 2px 4px rgba(0,0,0,0.2); animation: fadeUp 0.15s ease; }
+    .message.self { align-self: flex-end; background: #5865f2; color: #fff; border-bottom-right-radius: 6px; }
+    .message.other { align-self: flex-start; background: #383a40; border-bottom-left-radius: 6px; }
+    .message .msg-user { font-weight: 600; font-size: 13px; color: #b5bac1; margin-bottom: 2px; }
+    .message.self .msg-user { color: #c8ccff; }
+    .message .msg-time { font-size: 10px; color: #949ba4; margin-top: 4px; align-self: flex-end; }
+    .message.self .msg-time { color: #b9bdff; }
+    .discard-footer { background: #1e1f22; padding: 14px 18px 20px; border-top: 1px solid #3a3c42; display: flex; gap: 12px; align-items: center; }
+    .discard-footer input { flex: 1; background: #383a40; border: none; padding: 14px 18px; border-radius: 40px; color: #f2f3f5; font-size: 15px; outline: none; transition: 0.2s; }
+    .discard-footer input::placeholder { color: #7a7f89; }
+    .discard-footer input:focus { background: #404249; box-shadow: 0 0 0 2px #5865f2; }
+    .discard-footer button { background: #5865f2; border: none; color: white; font-weight: 600; padding: 14px 24px; border-radius: 40px; font-size: 15px; cursor: pointer; transition: 0.15s; }
+    .discard-footer button:hover { background: #4752c4; transform: scale(0.97); }
+    @keyframes fadeUp { 0% { opacity: 0.5; transform: translateY(6px); } 100% { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body>
+<div class="discard-container">
+  <div class="discard-header">
+    <h1>📡 <span>Дискард</span></h1>
+    <div class="sync-badge" id="statusBadge">⚡ Подключение...</div>
+  </div>
+  <div class="discard-chat" id="chatBox"></div>
+  <div class="discard-footer">
+    <input type="text" id="msgInput" placeholder="Написать в Дискард..." maxlength="500" autofocus>
+    <button id="sendBtn">➤ Отпр.</button>
+  </div>
+</div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+  // ====== ТВОЙ КОНФИГ ======
+  const firebaseConfig = {
+    apiKey: "AIzaSyBEaTlUs6XtXnnNbPITo70upMX12lDxKk4",
+    authDomain: "discard-mess.firebaseapp.com",
+    databaseURL: "https://discard-mess-default-rtdb.firebaseio.com",
+    projectId: "discard-mess",
+    storageBucket: "discard-mess.firebasestorage.app",
+    messagingSenderId: "343493809803",
+    appId: "1:343493809803:web:b2dc5d99fad37fa39ce68e"
+  };
+  // =========================
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+  const messagesRef = db.ref('messages');
+
+  const USER_NAME = 'Вы';
+  const chatBox = document.getElementById('chatBox');
+  const input = document.getElementById('msgInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const statusBadge = document.getElementById('statusBadge');
+
+  // слушаем новые сообщения
+  messagesRef.orderByChild('time').limitToLast(100).on('child_added', (snapshot) => {
+    const data = snapshot.val();
+    if (!data) return;
+    if (document.querySelector(`[data-msg-id="${snapshot.key}"]`)) return;
+
+    const isSelf = data.user === USER_NAME;
+    const div = document.createElement('div');
+    div.className = `message ${isSelf ? 'self' : 'other'}`;
+    div.setAttribute('data-msg-id', snapshot.key);
+
+    const userSpan = document.createElement('div');
+    userSpan.className = 'msg-user';
+    userSpan.innerText = data.user || 'Аноним';
+
+    const textSpan = document.createElement('div');
+    textSpan.innerText = data.text || '';
+
+    const timeSpan = document.createElement('div');
+    timeSpan.className = 'msg-time';
+    const d = new Date(data.time);
+    timeSpan.innerText = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+
+    div.appendChild(userSpan);
+    div.appendChild(textSpan);
+    div.appendChild(timeSpan);
+    chatBox.appendChild(div);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  });
+
+  // статус онлайн
+  const connectedRef = firebase.database().ref('.info/connected');
+  connectedRef.on('value', (snap) => {
+    if (snap.val() === true) {
+      statusBadge.className = 'sync-badge online';
+      statusBadge.innerText = '🟢 Онлайн';
+    } else {
+      statusBadge.className = 'sync-badge';
+      statusBadge.innerText = '🔴 Офлайн';
+    }
+  });
+
+  // отправка
+  function sendMessage() {
+    const text = input.value.trim();
+    if (!text) return;
+    const newMsg = {
+      user: USER_NAME,
+      text: text,
+      time: Date.now()
+    };
+    messagesRef.push().set(newMsg).then(() => {
+      input.value = '';
+      input.focus();
+    }).catch(() => {});
+  }
+
+  sendBtn.addEventListener('click', sendMessage);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  // приветствие, если база пустая
+  messagesRef.limitToFirst(1).once('value', (snap) => {
+    if (!snap.exists()) {
+      messagesRef.push().set({
+        user: 'Система',
+        text: 'Добро пожаловать в Дискард! Чат работает через Firebase.',
+        time: Date.now() - 60000
+      });
+    }
+  });
+
+  console.log('✅ Дискард запущен. База: discard-mess');
+</script>
+</body>
+</html>
