@@ -3,54 +3,302 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Дискард — Firebase чат</title>
+  <title>Дискард — чаты</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, sans-serif; }
-    body { background: #1e1f22; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 16px; }
-    .discard-container { max-width: 600px; width: 100%; background: #2b2d31; border-radius: 28px; box-shadow: 0 12px 40px rgba(0,0,0,0.6); overflow: hidden; display: flex; flex-direction: column; height: 700px; }
-    .discard-header { background: #1e1f22; padding: 18px 24px; border-bottom: 1px solid #3a3c42; display: flex; justify-content: space-between; align-items: center; }
-    .discard-header h1 { color: #f2f3f5; font-size: 22px; font-weight: 700; }
-    .discard-header h1 span { color: #7289da; }
-    .sync-badge { background: #3a3c42; color: #b5bac1; padding: 6px 14px; border-radius: 40px; font-size: 13px; font-weight: 500; cursor: default; border: 1px solid transparent; }
-    .sync-badge.online { background: #3a7c5a; color: #c3f0d4; border-color: #58b383; }
-    .discard-chat { flex: 1; overflow-y: auto; padding: 20px 18px 12px; display: flex; flex-direction: column; gap: 6px; background: #2b2d31; scroll-behavior: smooth; }
+    body { background: #1e1f22; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 12px; }
+    
+    /* главный контейнер — как дискорд */
+    .discard-app {
+      display: flex;
+      width: 1100px;
+      max-width: 100%;
+      height: 750px;
+      background: #2b2d31;
+      border-radius: 28px;
+      overflow: hidden;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.7);
+    }
+
+    /* левая панель — список чатов */
+    .discard-sidebar {
+      width: 280px;
+      background: #1e1f22;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid #3a3c42;
+      flex-shrink: 0;
+    }
+
+    /* иконка и поиск */
+    .discard-sidebar-header {
+      padding: 16px 14px 10px 14px;
+      border-bottom: 1px solid #3a3c42;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .discard-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #f2f3f5;
+      font-size: 20px;
+      font-weight: 700;
+    }
+    .discard-brand .icon {
+      background: #5865f2;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      color: white;
+      flex-shrink: 0;
+    }
+
+    .discard-search {
+      background: #383a40;
+      border: none;
+      border-radius: 30px;
+      padding: 10px 16px;
+      color: #f2f3f5;
+      font-size: 14px;
+      outline: none;
+      width: 100%;
+      transition: 0.2s;
+    }
+    .discard-search::placeholder { color: #7a7f89; }
+    .discard-search:focus { background: #404249; box-shadow: 0 0 0 2px #5865f2; }
+
+    /* список чатов */
+    .chat-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px 8px;
+    }
+    .chat-list::-webkit-scrollbar { width: 4px; }
+    .chat-list::-webkit-scrollbar-thumb { background: #4e5058; border-radius: 10px; }
+
+    .chat-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      border-radius: 14px;
+      color: #dbdee1;
+      cursor: pointer;
+      transition: 0.15s;
+      margin-bottom: 2px;
+    }
+    .chat-item:hover { background: #383a40; }
+    .chat-item.active { background: #404249; }
+    .chat-item .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #5865f2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      color: #fff;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    .chat-item .chat-name {
+      font-weight: 500;
+      font-size: 15px;
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .chat-item .chat-time {
+      font-size: 11px;
+      color: #7a7f89;
+    }
+
+    /* правая часть — окно чата */
+    .discard-chat-window {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: #2b2d31;
+    }
+
+    .chat-header {
+      padding: 14px 20px;
+      border-bottom: 1px solid #3a3c42;
+      color: #f2f3f5;
+      font-size: 18px;
+      font-weight: 600;
+      background: #1e1f22;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .chat-header .avatar-small {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #5865f2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .discard-chat {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 20px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      background: #2b2d31;
+    }
     .discard-chat::-webkit-scrollbar { width: 6px; }
     .discard-chat::-webkit-scrollbar-thumb { background: #4e5058; border-radius: 10px; }
-    .message { display: flex; flex-direction: column; max-width: 88%; padding: 10px 16px; border-radius: 18px; background: #383a40; color: #dbdee1; font-size: 15px; line-height: 1.5; word-wrap: break-word; box-shadow: 0 2px 4px rgba(0,0,0,0.2); animation: fadeUp 0.15s ease; }
-    .message.self { align-self: flex-end; background: #5865f2; color: #fff; border-bottom-right-radius: 6px; }
-    .message.other { align-self: flex-start; background: #383a40; border-bottom-left-radius: 6px; }
-    .message .msg-user { font-weight: 600; font-size: 13px; color: #b5bac1; margin-bottom: 2px; }
+
+    .message {
+      display: flex;
+      flex-direction: column;
+      max-width: 82%;
+      padding: 10px 16px;
+      border-radius: 18px;
+      background: #383a40;
+      color: #dbdee1;
+      font-size: 15px;
+      line-height: 1.5;
+      word-wrap: break-word;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      animation: fadeUp 0.12s ease;
+    }
+    .message.self {
+      align-self: flex-end;
+      background: #5865f2;
+      color: #fff;
+      border-bottom-right-radius: 6px;
+    }
+    .message.other {
+      align-self: flex-start;
+      background: #383a40;
+      border-bottom-left-radius: 6px;
+    }
+    .message .msg-user {
+      font-weight: 600;
+      font-size: 13px;
+      color: #b5bac1;
+      margin-bottom: 2px;
+    }
     .message.self .msg-user { color: #c8ccff; }
-    .message .msg-time { font-size: 10px; color: #949ba4; margin-top: 4px; align-self: flex-end; }
+    .message .msg-time {
+      font-size: 10px;
+      color: #949ba4;
+      margin-top: 4px;
+      align-self: flex-end;
+    }
     .message.self .msg-time { color: #b9bdff; }
-    .discard-footer { background: #1e1f22; padding: 14px 18px 20px; border-top: 1px solid #3a3c42; display: flex; gap: 12px; align-items: center; }
-    .discard-footer input { flex: 1; background: #383a40; border: none; padding: 14px 18px; border-radius: 40px; color: #f2f3f5; font-size: 15px; outline: none; transition: 0.2s; }
+
+    .discard-footer {
+      background: #1e1f22;
+      padding: 12px 18px 18px;
+      border-top: 1px solid #3a3c42;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .discard-footer input {
+      flex: 1;
+      background: #383a40;
+      border: none;
+      padding: 12px 18px;
+      border-radius: 40px;
+      color: #f2f3f5;
+      font-size: 15px;
+      outline: none;
+      transition: 0.2s;
+    }
     .discard-footer input::placeholder { color: #7a7f89; }
     .discard-footer input:focus { background: #404249; box-shadow: 0 0 0 2px #5865f2; }
-    .discard-footer button { background: #5865f2; border: none; color: white; font-weight: 600; padding: 14px 24px; border-radius: 40px; font-size: 15px; cursor: pointer; transition: 0.15s; }
+    .discard-footer button {
+      background: #5865f2;
+      border: none;
+      color: white;
+      font-weight: 600;
+      padding: 12px 22px;
+      border-radius: 40px;
+      font-size: 15px;
+      cursor: pointer;
+      transition: 0.15s;
+    }
     .discard-footer button:hover { background: #4752c4; transform: scale(0.97); }
-    @keyframes fadeUp { 0% { opacity: 0.5; transform: translateY(6px); } 100% { opacity: 1; transform: translateY(0); } }
+
+    .empty-state {
+      color: #6a6f78;
+      text-align: center;
+      margin-top: 40px;
+      font-size: 15px;
+    }
+
+    @keyframes fadeUp {
+      0% { opacity: 0.5; transform: translateY(6px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    /* адаптив */
+    @media (max-width: 700px) {
+      .discard-sidebar { width: 200px; }
+    }
   </style>
 </head>
 <body>
-<div class="discard-container">
-  <div class="discard-header">
-    <h1>📡 <span>Дискард</span></h1>
-    <div class="sync-badge" id="statusBadge">⚡ Подключение...</div>
+<div class="discard-app" id="app">
+
+  <!-- ЛЕВАЯ ПАНЕЛЬ -->
+  <div class="discard-sidebar">
+    <div class="discard-sidebar-header">
+      <div class="discard-brand">
+        <div class="icon">📡</div>
+        <span>Дискард</span>
+      </div>
+      <input class="discard-search" id="searchInput" type="text" placeholder="🔍 Поиск пользователя...">
+    </div>
+    <div class="chat-list" id="chatList">
+      <!-- чаты будут рендериться здесь -->
+      <div class="empty-state" style="color:#6a6f78; padding:20px; text-align:center;">Нет чатов<br>Найдите пользователя</div>
+    </div>
   </div>
-  <div class="discard-chat" id="chatBox"></div>
-  <div class="discard-footer">
-    <input type="text" id="msgInput" placeholder="Написать в Дискард..." maxlength="500" autofocus>
-    <button id="sendBtn">➤ Отпр.</button>
+
+  <!-- ПРАВАЯ ЧАСТЬ -->
+  <div class="discard-chat-window">
+    <div class="chat-header" id="chatHeader">
+      <div class="avatar-small" id="headerAvatar">👤</div>
+      <span id="headerName">Выберите чат</span>
+    </div>
+
+    <div class="discard-chat" id="chatBox">
+      <div class="empty-state">👋 Начните переписку</div>
+    </div>
+
+    <div class="discard-footer">
+      <input type="text" id="msgInput" placeholder="Сообщение..." maxlength="500" disabled>
+      <button id="sendBtn" disabled>➤</button>
+    </div>
   </div>
 </div>
 
-<!-- Firebase SDK -->
+<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <script>
-  // ====== ТВОЙ КОНФИГ ======
+  // ====== КОНФИГ ======
   const firebaseConfig = {
     apiKey: "AIzaSyBEaTlUs6XtXnnNbPITo70upMX12lDxKk4",
     authDomain: "discard-mess.firebaseapp.com",
@@ -60,32 +308,132 @@
     messagingSenderId: "343493809803",
     appId: "1:343493809803:web:b2dc5d99fad37fa39ce68e"
   };
-  // =========================
+  // =====================
 
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
+  const usersRef = db.ref('users');
   const messagesRef = db.ref('messages');
 
-  const USER_NAME = 'Вы';
+  const USER_NAME = 'Вы'; // текущий пользователь (можно менять)
+  let currentChat = null; // имя собеседника
+  let allUsers = []; // кеш
+
+  // DOM
+  const chatList = document.getElementById('chatList');
+  const searchInput = document.getElementById('searchInput');
   const chatBox = document.getElementById('chatBox');
-  const input = document.getElementById('msgInput');
+  const msgInput = document.getElementById('msgInput');
   const sendBtn = document.getElementById('sendBtn');
-  const statusBadge = document.getElementById('statusBadge');
+  const headerName = document.getElementById('headerName');
+  const headerAvatar = document.getElementById('headerAvatar');
 
-  // слушаем новые сообщения
-  messagesRef.orderByChild('time').limitToLast(100).on('child_added', (snapshot) => {
-    const data = snapshot.val();
-    if (!data) return;
-    if (document.querySelector(`[data-msg-id="${snapshot.key}"]`)) return;
+  // ----- ФУНКЦИИ -----
 
-    const isSelf = data.user === USER_NAME;
+  // получить или создать пользователя в Firebase
+  function ensureUser(username) {
+    if (!username || username.trim() === '') return;
+    const userRef = usersRef.child(username);
+    userRef.once('value', (snap) => {
+      if (!snap.exists()) {
+        userRef.set({
+          name: username,
+          created: Date.now()
+        });
+      }
+    });
+  }
+
+  // загрузить список пользователей (кроме себя)
+  function loadUsers() {
+    usersRef.on('value', (snap) => {
+      const data = snap.val();
+      if (!data) { allUsers = []; renderChatList(); return; }
+      allUsers = Object.keys(data).filter(name => name !== USER_NAME);
+      renderChatList();
+    });
+  }
+
+  // отрисовать список чатов
+  function renderChatList(filter = '') {
+    chatList.innerHTML = '';
+    let list = allUsers;
+    if (filter.trim() !== '') {
+      const f = filter.toLowerCase().trim();
+      list = list.filter(name => name.toLowerCase().includes(f));
+    }
+    if (list.length === 0) {
+      chatList.innerHTML = '<div class="empty-state" style="color:#6a6f78; padding:20px; text-align:center;">Никого не найдено</div>';
+      return;
+    }
+    list.forEach(name => {
+      const div = document.createElement('div');
+      div.className = `chat-item ${currentChat === name ? 'active' : ''}`;
+      div.innerHTML = `
+        <div class="avatar">${name.charAt(0).toUpperCase()}</div>
+        <span class="chat-name">${name}</span>
+        <span class="chat-time">●</span>
+      `;
+      div.addEventListener('click', () => openChat(name));
+      chatList.appendChild(div);
+    });
+  }
+
+  // открыть чат с пользователем
+  function openChat(username) {
+    if (!username || username === USER_NAME) return;
+    currentChat = username;
+    renderChatList(searchInput.value);
+    headerName.textContent = username;
+    headerAvatar.textContent = username.charAt(0).toUpperCase();
+    msgInput.disabled = false;
+    sendBtn.disabled = false;
+    msgInput.focus();
+    loadMessages(username);
+    // подписаться на новые сообщения
+    subscribeToMessages(username);
+  }
+
+  // загрузить сообщения с конкретным пользователем
+  function loadMessages(username) {
+    chatBox.innerHTML = '';
+    const chatRef = messagesRef.child(username).child(USER_NAME);
+    chatRef.orderByChild('time').limitToLast(50).once('value', (snap) => {
+      const data = snap.val();
+      if (!data) {
+        chatBox.innerHTML = '<div class="empty-state">💬 Начните диалог</div>';
+        return;
+      }
+      const sorted = Object.values(data).sort((a,b) => a.time - b.time);
+      sorted.forEach(msg => renderMessage(msg));
+    });
+  }
+
+  // подписка на новые сообщения (реалтайм)
+  function subscribeToMessages(username) {
+    const chatRef = messagesRef.child(username).child(USER_NAME);
+    chatRef.orderByChild('time').limitToLast(1).on('child_added', (snapshot) => {
+      const data = snapshot.val();
+      if (!data) return;
+      // избегаем дублей
+      const existing = chatBox.querySelector(`[data-id="${snapshot.key}"]`);
+      if (!existing) {
+        renderMessage(data);
+        chatBox.scrollTop = chatBox.scrollHeight;
+      }
+    });
+  }
+
+  // отрисовать одно сообщение
+  function renderMessage(data) {
+    const isSelf = data.sender === USER_NAME;
     const div = document.createElement('div');
     div.className = `message ${isSelf ? 'self' : 'other'}`;
-    div.setAttribute('data-msg-id', snapshot.key);
+    div.setAttribute('data-id', data.id || Date.now());
 
     const userSpan = document.createElement('div');
     userSpan.className = 'msg-user';
-    userSpan.innerText = data.user || 'Аноним';
+    userSpan.innerText = data.sender || 'Аноним';
 
     const textSpan = document.createElement('div');
     textSpan.innerText = data.text || '';
@@ -100,55 +448,56 @@
     div.appendChild(timeSpan);
     chatBox.appendChild(div);
     chatBox.scrollTop = chatBox.scrollHeight;
-  });
+  }
 
-  // статус онлайн
-  const connectedRef = firebase.database().ref('.info/connected');
-  connectedRef.on('value', (snap) => {
-    if (snap.val() === true) {
-      statusBadge.className = 'sync-badge online';
-      statusBadge.innerText = '🟢 Онлайн';
-    } else {
-      statusBadge.className = 'sync-badge';
-      statusBadge.innerText = '🔴 Офлайн';
-    }
-  });
-
-  // отправка
+  // отправить сообщение
   function sendMessage() {
-    const text = input.value.trim();
+    if (!currentChat) return;
+    const text = msgInput.value.trim();
     if (!text) return;
     const newMsg = {
-      user: USER_NAME,
+      sender: USER_NAME,
       text: text,
-      time: Date.now()
+      time: Date.now(),
+      id: Date.now() + '_' + Math.random().toString(36).substr(2, 4)
     };
-    messagesRef.push().set(newMsg).then(() => {
-      input.value = '';
-      input.focus();
+    const chatRef = messagesRef.child(currentChat).child(USER_NAME);
+    chatRef.push().set(newMsg).then(() => {
+      msgInput.value = '';
+      msgInput.focus();
     }).catch(() => {});
   }
 
+  // ----- СОБЫТИЯ -----
+
+  // поиск
+  searchInput.addEventListener('input', (e) => {
+    renderChatList(e.target.value);
+  });
+
+  // отправка
   sendBtn.addEventListener('click', sendMessage);
-  input.addEventListener('keydown', (e) => {
+  msgInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       sendMessage();
     }
   });
 
-  // приветствие, если база пустая
-  messagesRef.limitToFirst(1).once('value', (snap) => {
-    if (!snap.exists()) {
-      messagesRef.push().set({
-        user: 'Система',
-        text: 'Добро пожаловать в Дискард! Чат работает через Firebase.',
-        time: Date.now() - 60000
-      });
-    }
-  });
+  // ----- ЗАПУСК -----
 
-  console.log('✅ Дискард запущен. База: discard-mess');
+  // если пользователь не существует — создать
+  ensureUser(USER_NAME);
+  loadUsers();
+
+  // если есть пользователи — открыть первого
+  setTimeout(() => {
+    if (allUsers.length > 0 && !currentChat) {
+      openChat(allUsers[0]);
+    }
+  }, 800);
+
+  console.log('🔥 Дискард v2 с чатами и поиском');
 </script>
 </body>
 </html>
