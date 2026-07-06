@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Дискард — чат</title>
+    <title>Дискард — голосовой чат</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, sans-serif; }
         body { background: #1e1f22; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 16px; }
@@ -134,7 +134,6 @@
         .chat-header .chat-header-name { font-size: 18px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .chat-header .chat-header-username { font-size: 13px; font-weight: 400; color: #7a7f89; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-        /* КНОПКА ЗВОНКА */
         .chat-header .call-btn {
             background: #2ecc71;
             border: none;
@@ -206,18 +205,36 @@
         .modal-overlay.show { display: flex; }
         .modal {
             background: #2b2d31; border-radius: 24px; padding: 32px 36px;
-            max-width: 480px; width: 100%; color: #f2f3f5;
+            max-width: 520px; width: 100%; color: #f2f3f5;
             box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+            max-height: 90vh;
+            overflow-y: auto;
         }
-        .modal h2 { font-size: 24px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px; }
+        .modal h2 { font-size: 24px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; }
         .modal h2 .icon { font-size: 28px; }
+
+        .modal-tabs {
+            display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid #3a3c42;
+        }
+        .modal-tabs button {
+            background: transparent; border: none; color: #b5bac1;
+            padding: 10px 16px; cursor: pointer; font-size: 14px; font-weight: 500;
+            border-bottom: 2px solid transparent; transition: 0.2s;
+        }
+        .modal-tabs button:hover { color: #f2f3f5; }
+        .modal-tabs button.active { color: #5865f2; border-bottom-color: #5865f2; }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
         .modal label { font-size: 14px; font-weight: 500; color: #b5bac1; display: block; margin-bottom: 4px; margin-top: 12px; }
-        .modal input, .modal textarea {
+        .modal input, .modal textarea, .modal select {
             background: #383a40; border: none; padding: 12px 16px; border-radius: 10px;
             color: #f2f3f5; font-size: 15px; outline: none; width: 100%;
         }
-        .modal input:focus, .modal textarea:focus { background: #404249; box-shadow: 0 0 0 2px #5865f2; }
+        .modal input:focus, .modal textarea:focus, .modal select:focus { background: #404249; box-shadow: 0 0 0 2px #5865f2; }
         .modal textarea { resize: vertical; min-height: 60px; font-family: inherit; }
+        .modal select option { background: #2b2d31; }
         .modal .btn-save {
             background: #5865f2; border: none; color: white; font-weight: 600;
             padding: 14px; border-radius: 12px; font-size: 16px; cursor: pointer;
@@ -240,6 +257,12 @@
             border-radius: 10px; font-size: 14px; display: none; margin-top: 12px;
             border-left: 4px solid #e74c3c;
         }
+        .modal .audio-test-btn {
+            background: #3a3c42; border: none; color: #f2f3f5;
+            padding: 8px 16px; border-radius: 8px; cursor: pointer; margin-top: 8px;
+            font-size: 13px; transition: 0.2s;
+        }
+        .modal .audio-test-btn:hover { background: #4e5058; }
 
         /* Модалка входящего звонка */
         .incoming-call {
@@ -248,7 +271,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.85);
             backdrop-filter: blur(6px);
             display: none;
             justify-content: center;
@@ -264,9 +287,11 @@
             text-align: center;
             color: #f2f3f5;
             box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+            max-width: 400px;
+            width: 100%;
         }
         .incoming-call .call-box h2 { font-size: 28px; margin-bottom: 8px; }
-        .incoming-call .call-box p { color: #7a7f89; margin-bottom: 24px; }
+        .incoming-call .call-box p { color: #7a7f89; margin-bottom: 24px; font-size: 16px; }
         .incoming-call .call-box .call-actions {
             display: flex;
             gap: 16px;
@@ -395,14 +420,38 @@
 <div class="modal-overlay" id="settingsModal">
     <div class="modal">
         <h2><span class="icon">⚙️</span> Настройки</h2>
-        <label>Имя</label>
-        <input type="text" id="settingsName" placeholder="Ваше имя">
-        <label>Юзернейм (нельзя изменить)</label>
-        <input type="text" id="settingsUsername" disabled style="opacity:0.6;">
-        <label>Описание</label>
-        <textarea id="settingsDescription" placeholder="О себе..."></textarea>
-        <label>Электронная почта</label>
-        <input type="email" id="settingsEmail" placeholder="you@example.com">
+        
+        <div class="modal-tabs">
+            <button class="active" data-tab="tab-account">👤 Аккаунт</button>
+            <button data-tab="tab-audio">🎧 Аудио</button>
+        </div>
+
+        <div class="tab-content active" id="tab-account">
+            <label>Имя</label>
+            <input type="text" id="settingsName" placeholder="Ваше имя">
+            <label>Юзернейм (нельзя изменить)</label>
+            <input type="text" id="settingsUsername" disabled style="opacity:0.6;">
+            <label>Описание</label>
+            <textarea id="settingsDescription" placeholder="О себе..."></textarea>
+            <label>Электронная почта</label>
+            <input type="email" id="settingsEmail" placeholder="you@example.com">
+        </div>
+
+        <div class="tab-content" id="tab-audio">
+            <label>🎤 Микрофон</label>
+            <select id="audioInputSelect">
+                <option value="">Выберите микрофон...</option>
+            </select>
+            <button class="audio-test-btn" id="testMicBtn">🔊 Проверить микрофон</button>
+            
+            <label style="margin-top:16px;">🔊 Динамики (выход)</label>
+            <select id="audioOutputSelect">
+                <option value="">Выберите динамики...</option>
+            </select>
+            <button class="audio-test-btn" id="testOutputBtn">🔊 Проверить динамики</button>
+            <div style="margin-top:12px;font-size:13px;color:#7a7f89;" id="audioStatus">Готово</div>
+        </div>
+
         <div class="saved-toast" id="settingsSaved">✅ Изменения сохранены</div>
         <div class="error-toast" id="settingsError">❌ Ошибка</div>
         <button class="btn-save" id="settingsSaveBtn">💾 Сохранить</button>
@@ -472,6 +521,13 @@
     var settingsSaved = document.getElementById('settingsSaved');
     var settingsError = document.getElementById('settingsError');
 
+    // Аудио
+    var audioInputSelect = document.getElementById('audioInputSelect');
+    var audioOutputSelect = document.getElementById('audioOutputSelect');
+    var testMicBtn = document.getElementById('testMicBtn');
+    var testOutputBtn = document.getElementById('testOutputBtn');
+    var audioStatus = document.getElementById('audioStatus');
+
     var currentUser = null;
     var currentChat = null;
     var allUsers = [];
@@ -519,40 +575,13 @@
         });
     }
 
-    acceptCallBtn.addEventListener('click', function() {
-        var call = window._pendingCall;
-        if (!call) return;
-        navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-            .then(function(stream) {
-                localStream = stream;
-                call.answer(stream);
-                call.on('stream', function(remoteStream) {
-                    var audio = new Audio();
-                    audio.srcObject = remoteStream;
-                    audio.play();
-                    callBtn.textContent = '🔴 Положить трубку';
-                    callBtn.classList.add('in-call');
-                    callReceiverUid = window._callerUid;
-                    console.log('Звонок принят');
-                });
-                call.on('close', function() {
-                    endCall();
-                });
-                incomingCall.classList.remove('show');
-                window._pendingCall = null;
-            })
-            .catch(function(err) {
-                console.error('Ошибка принятия звонка:', err);
+    function getPeerIdByUid(uid) {
+        return new Promise(function(resolve) {
+            db.ref('users').child(uid).child('peerId').once('value', function(snap) {
+                resolve(snap.val());
             });
-    });
-
-    rejectCallBtn.addEventListener('click', function() {
-        if (window._pendingCall) {
-            window._pendingCall.close();
-            window._pendingCall = null;
-        }
-        incomingCall.classList.remove('show');
-    });
+        });
+    }
 
     function endCall() {
         if (currentCall) {
@@ -566,26 +595,21 @@
         callBtn.textContent = '📞 Позвонить';
         callBtn.classList.remove('in-call');
         callReceiverUid = null;
-        console.log('Звонок завершён');
+        audioStatus.textContent = '📞 Звонок завершён';
     }
 
-    function getPeerIdByUid(uid) {
-        return new Promise(function(resolve) {
-            db.ref('users').child(uid).child('peerId').once('value', function(snap) {
-                resolve(snap.val());
-            });
-        });
-    }
-
+    // ====== КНОПКА ЗВОНКА ======
     callBtn.addEventListener('click', function() {
         if (callBtn.classList.contains('in-call')) {
             endCall();
             return;
         }
         if (!currentChat) {
-            console.log('Выберите собеседника');
+            audioStatus.textContent = '❌ Выберите собеседника';
             return;
         }
+
+        audioStatus.textContent = '📞 Идёт вызов...';
         navigator.mediaDevices.getUserMedia({ audio: true, video: false })
             .then(function(stream) {
                 localStream = stream;
@@ -593,7 +617,11 @@
             })
             .then(function(receiverPeerId) {
                 if (!receiverPeerId) {
-                    console.log('Собеседник не в сети');
+                    audioStatus.textContent = '❌ Собеседник не в сети';
+                    if (localStream) {
+                        localStream.getTracks().forEach(function(t) { t.stop(); });
+                        localStream = null;
+                    }
                     return;
                 }
                 var call = peer.call(receiverPeerId, localStream);
@@ -603,22 +631,153 @@
                     var audio = new Audio();
                     audio.srcObject = remoteStream;
                     audio.play();
+                    audioStatus.textContent = '🔊 Разговор идёт...';
                     callBtn.textContent = '🔴 Положить трубку';
                     callBtn.classList.add('in-call');
-                    console.log('Разговор идёт');
                 });
                 call.on('close', function() {
                     endCall();
+                    audioStatus.textContent = '📞 Собеседник завершил звонок';
                 });
-                console.log('Звонок...');
+                audioStatus.textContent = '📞 Звонок...';
             })
             .catch(function(err) {
+                audioStatus.textContent = '❌ Ошибка: ' + err.message;
                 console.error('Ошибка звонка:', err);
+                if (localStream) {
+                    localStream.getTracks().forEach(function(t) { t.stop(); });
+                    localStream = null;
+                }
             });
     });
 
-    // ====== ОСТАЛЬНЫЕ ФУНКЦИИ ======
+    // ====== ПРИНЯТЬ ЗВОНОК ======
+    acceptCallBtn.addEventListener('click', function() {
+        var call = window._pendingCall;
+        if (!call) return;
+        incomingCall.classList.remove('show');
+        navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+            .then(function(stream) {
+                localStream = stream;
+                call.answer(stream);
+                call.on('stream', function(remoteStream) {
+                    var audio = new Audio();
+                    audio.srcObject = remoteStream;
+                    audio.play();
+                    audioStatus.textContent = '🔊 Разговор идёт...';
+                    callBtn.textContent = '🔴 Положить трубку';
+                    callBtn.classList.add('in-call');
+                    callReceiverUid = window._callerUid;
+                });
+                call.on('close', function() {
+                    endCall();
+                    audioStatus.textContent = '📞 Собеседник завершил звонок';
+                });
+                window._pendingCall = null;
+                audioStatus.textContent = '🔊 Звонок принят';
+            })
+            .catch(function(err) {
+                audioStatus.textContent = '❌ Ошибка: ' + err.message;
+                console.error('Ошибка принятия:', err);
+            });
+    });
 
+    // ====== ОТКЛОНИТЬ ЗВОНОК ======
+    rejectCallBtn.addEventListener('click', function() {
+        if (window._pendingCall) {
+            window._pendingCall.close();
+            window._pendingCall = null;
+        }
+        incomingCall.classList.remove('show');
+        audioStatus.textContent = '❌ Звонок отклонён';
+    });
+
+    // ====== АУДИО ======
+    function getAudioDevices() {
+        if (!navigator.mediaDevices) {
+            audioStatus.textContent = '⚠️ Ваш браузер не поддерживает аудио';
+            return;
+        }
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(function(stream) {
+                stream.getTracks().forEach(function(t) { t.stop(); });
+                return navigator.mediaDevices.enumerateDevices();
+            })
+            .then(function(devices) {
+                var inputs = devices.filter(function(d) { return d.kind === 'audioinput'; });
+                audioInputSelect.innerHTML = '<option value="">Выберите микрофон...</option>';
+                for (var i = 0; i < inputs.length; i++) {
+                    var opt = document.createElement('option');
+                    opt.value = inputs[i].deviceId;
+                    opt.textContent = inputs[i].label || 'Микрофон ' + (i + 1);
+                    audioInputSelect.appendChild(opt);
+                }
+
+                var outputs = devices.filter(function(d) { return d.kind === 'audiooutput'; });
+                audioOutputSelect.innerHTML = '<option value="">Выберите динамики...</option>';
+                for (var j = 0; j < outputs.length; j++) {
+                    var opt2 = document.createElement('option');
+                    opt2.value = outputs[j].deviceId;
+                    opt2.textContent = outputs[j].label || 'Динамики ' + (j + 1);
+                    audioOutputSelect.appendChild(opt2);
+                }
+
+                var savedInput = localStorage.getItem('discard_audio_input');
+                var savedOutput = localStorage.getItem('discard_audio_output');
+                if (savedInput) audioInputSelect.value = savedInput;
+                if (savedOutput) audioOutputSelect.value = savedOutput;
+
+                audioStatus.textContent = '✅ Найдено микрофонов: ' + inputs.length + ', динамиков: ' + outputs.length;
+            })
+            .catch(function(err) {
+                audioStatus.textContent = '⚠️ Нет доступа к микрофону: ' + err.message;
+            });
+    }
+
+    testMicBtn.addEventListener('click', function() {
+        var deviceId = audioInputSelect.value;
+        var constraints = { audio: { deviceId: deviceId ? { exact: deviceId } : undefined } };
+        navigator.mediaDevices.getUserMedia(constraints)
+            .then(function(stream) {
+                audioStatus.textContent = '🎤 Микрофон работает!';
+                setTimeout(function() {
+                    audioStatus.textContent = '✅ Микрофон проверен';
+                    stream.getTracks().forEach(function(t) { t.stop(); });
+                }, 2000);
+            })
+            .catch(function(err) {
+                audioStatus.textContent = '❌ Ошибка микрофона: ' + err.message;
+            });
+    });
+
+    testOutputBtn.addEventListener('click', function() {
+        try {
+            var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            var oscillator = audioCtx.createOscillator();
+            var gainNode = audioCtx.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            oscillator.frequency.value = 440;
+            gainNode.gain.value = 0.3;
+            oscillator.start();
+            audioStatus.textContent = '🔊 Динамики работают (440 Гц)';
+            setTimeout(function() {
+                oscillator.stop();
+                audioStatus.textContent = '✅ Динамики проверены';
+            }, 1500);
+        } catch (err) {
+            audioStatus.textContent = '❌ Ошибка динамиков: ' + err.message;
+        }
+    });
+
+    audioInputSelect.addEventListener('change', function() {
+        localStorage.setItem('discard_audio_input', audioInputSelect.value);
+    });
+    audioOutputSelect.addEventListener('change', function() {
+        localStorage.setItem('discard_audio_output', audioOutputSelect.value);
+    });
+
+    // ====== АВТОРИЗАЦИЯ ======
     function showError(msg, hint) {
         if (hint === undefined) hint = '';
         errorMsg.style.display = 'block';
@@ -687,6 +846,7 @@
         app.style.display = 'flex';
         localStorage.setItem('discard_session_uid', uid);
         initChat(uid);
+        getAudioDevices();
     }
 
     if (sessionUid) {
@@ -817,6 +977,7 @@
         callBtn.style.display = 'none';
     });
 
+    // ====== ЧАТ ======
     function initChat(uid) {
         var userRef = db.ref('users').child(uid);
         userRef.once('value', function(snap) {
@@ -1040,7 +1201,24 @@
         });
     }
 
+    // ====== НАСТРОЙКИ ======
     function setupSettings() {
+        document.querySelectorAll('.modal-tabs button').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.modal-tabs button').forEach(function(b) {
+                    b.classList.remove('active');
+                });
+                btn.classList.add('active');
+                document.querySelectorAll('.tab-content').forEach(function(t) {
+                    t.classList.remove('active');
+                });
+                document.getElementById(btn.dataset.tab).classList.add('active');
+                if (btn.dataset.tab === 'tab-audio') {
+                    getAudioDevices();
+                }
+            });
+        });
+
         settingsBtn.addEventListener('click', function() {
             settingsName.value = currentUser.name || '';
             settingsUsername.value = '@' + (currentUser.username || '');
@@ -1049,6 +1227,7 @@
             settingsModal.classList.add('show');
             settingsSaved.style.display = 'none';
             settingsError.style.display = 'none';
+            getAudioDevices();
         });
 
         settingsCloseBtn.addEventListener('click', function() {
@@ -1121,7 +1300,7 @@
         });
     }
 
-    console.log('🔥 Дискард с кнопкой звонка!');
+    console.log('🔥 Дискард — голосовые звонки работают!');
 </script>
 </body>
 </html>
