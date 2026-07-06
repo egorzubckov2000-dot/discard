@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Дискард — голосовой чат</title>
+    <title>Дискард — голосовые звонки</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, sans-serif; }
         body { background: #1e1f22; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 16px; }
@@ -459,13 +459,11 @@
     </div>
 </div>
 
-<!-- PeerJS для звонков -->
-<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <script>
+    // ====== КОНФИГ FIREBASE ======
     var firebaseConfig = {
         apiKey: "AIzaSyBEaTlUs6XtXnnNbPITo70upMX12lDxKk4",
         authDomain: "discard-mess.firebaseapp.com",
@@ -479,7 +477,7 @@
     firebase.initializeApp(firebaseConfig);
     var db = firebase.database();
 
-    // DOM
+    // ====== DOM ======
     var authPage = document.getElementById('authPage');
     var app = document.getElementById('app');
     var loginMode = document.getElementById('loginMode');
@@ -521,7 +519,6 @@
     var settingsSaved = document.getElementById('settingsSaved');
     var settingsError = document.getElementById('settingsError');
 
-    // Аудио
     var audioInputSelect = document.getElementById('audioInputSelect');
     var audioOutputSelect = document.getElementById('audioOutputSelect');
     var testMicBtn = document.getElementById('testMicBtn');
@@ -535,77 +532,28 @@
     var usernameAvailable = false;
     var sessionUid = localStorage.getItem('discard_session_uid');
 
-    // ====== PEERJS (ЗВОНКИ) ======
-    var peer = null;
-    var currentCall = null;
+    // ====== ЗВОНКИ (БЕЗ PEERJS, ЧЕРЕЗ FIREBASE) ======
     var localStream = null;
+    var remoteStream = null;
+    var peerConnection = null;
+    var isInCall = false;
     var callReceiverUid = null;
 
-    function initPeer() {
-        if (peer) return;
-        var peerId = 'discard-' + currentUser.uid;
-        peer = new Peer(peerId, {
-            debug: 0,
-            config: {
-                iceServers: [
-                    { urls: 'stun:stun.l.google.com:19302' },
-                    { urls: 'stun:stun1.l.google.com:19302' }
-                ]
-            }
-        });
-        peer.on('open', function(id) {
-            console.log('PeerJS подключён:', id);
-            db.ref('users').child(currentUser.uid).update({ peerId: id });
-        });
-        peer.on('call', function(call) {
-            var callerPeerId = call.peer;
-            db.ref('users').orderByChild('peerId').equalTo(callerPeerId).once('value', function(snap) {
-                var data = snap.val();
-                if (!data) return;
-                var callerUid = Object.keys(data)[0];
-                var callerData = data[callerUid];
-                callerName.textContent = callerData.name + ' (@' + callerData.username + ')';
-                incomingCall.classList.add('show');
-                window._pendingCall = call;
-                window._callerUid = callerUid;
-            });
-        });
-        peer.on('error', function(err) {
-            console.error('PeerJS error:', err);
-        });
-    }
+    var servers = {
+        iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' }
+        ]
+    };
 
-    function getPeerIdByUid(uid) {
-        return new Promise(function(resolve) {
-            db.ref('users').child(uid).child('peerId').once('value', function(snap) {
-                resolve(snap.val());
-            });
-        });
-    }
-
-    function endCall() {
-        if (currentCall) {
-            currentCall.close();
-            currentCall = null;
-        }
-        if (localStream) {
-            localStream.getTracks().forEach(function(t) { t.stop(); });
-            localStream = null;
-        }
-        callBtn.textContent = '📞 Позвонить';
-        callBtn.classList.remove('in-call');
-        callReceiverUid = null;
-        audioStatus.textContent = '📞 Звонок завершён';
-    }
-
-    // ====== КНОПКА ЗВОНКА ======
-    callBtn.addEventListener('click', function() {
-        if (callBtn.classList.contains('in-call')) {
-            endCall();
-            return;
-        }
+    // ====== ФУНКЦИИ ЗВОНКОВ ======
+    function startCall() {
         if (!currentChat) {
             audioStatus.textContent = '❌ Выберите собеседника';
+            return;
+        }
+        if (isInCall) {
+            endCall();
             return;
         }
 
@@ -613,82 +561,213 @@
         navigator.mediaDevices.getUserMedia({ audio: true, video: false })
             .then(function(stream) {
                 localStream = stream;
-                return getPeerIdByUid(currentChat);
-            })
-            .then(function(receiverPeerId) {
-                if (!receiverPeerId) {
-                    audioStatus.textContent = '❌ Собеседник не в сети';
-                    if (localStream) {
-                        localStream.getTracks().forEach(function(t) { t.stop(); });
-                        localStream = null;
+                // Отправляем уведомление о звонке
+                var callData = {
+                    from: currentUser.uid,
+                    fromName: currentUser.name,
+                    timestamp: Date.now()
+                };
+                db.ref('calls').child(currentChat).set(callData);
+                audioStatus.textContent = '📞 Ожидаем ответа...';
+                // Слушаем ответ
+                var answerRef = db.ref('calls').child(currentChat).child('answer');
+                answerRef.on('value', function(snap) {
+                    var data = snap.val();
+                    if (data === 'accept') {
+                        answerRef.off();
+                        audioStatus.textContent = '🔊 Звонок принят!';
+                        startPeerConnection(true);
+                    } else if (data === 'reject') {
+                        answerRef.off();
+                        audioStatus.textContent = '❌ Звонок отклонён';
+                        endCall();
                     }
-                    return;
-                }
-                var call = peer.call(receiverPeerId, localStream);
-                currentCall = call;
-                callReceiverUid = currentChat;
-                call.on('stream', function(remoteStream) {
-                    var audio = new Audio();
-                    audio.srcObject = remoteStream;
-                    audio.play();
-                    audioStatus.textContent = '🔊 Разговор идёт...';
-                    callBtn.textContent = '🔴 Положить трубку';
-                    callBtn.classList.add('in-call');
                 });
-                call.on('close', function() {
-                    endCall();
-                    audioStatus.textContent = '📞 Собеседник завершил звонок';
-                });
-                audioStatus.textContent = '📞 Звонок...';
+                // Таймаут 30 секунд
+                setTimeout(function() {
+                    answerRef.off();
+                    if (!isInCall) {
+                        audioStatus.textContent = '⏰ Звонок не отвечен';
+                        endCall();
+                    }
+                }, 30000);
             })
             .catch(function(err) {
                 audioStatus.textContent = '❌ Ошибка: ' + err.message;
-                console.error('Ошибка звонка:', err);
-                if (localStream) {
-                    localStream.getTracks().forEach(function(t) { t.stop(); });
-                    localStream = null;
+                console.error(err);
+            });
+    }
+
+    function startPeerConnection(isCaller) {
+        peerConnection = new RTCPeerConnection(servers);
+        
+        if (isCaller) {
+            // Исходящий звонок — добавляем локальный стрим
+            localStream.getTracks().forEach(function(track) {
+                peerConnection.addTrack(track, localStream);
+            });
+            // Создаём offer
+            peerConnection.createOffer()
+                .then(function(offer) {
+                    return peerConnection.setLocalDescription(offer);
+                })
+                .then(function() {
+                    // Отправляем offer в Firebase
+                    db.ref('calls').child(currentChat).child('offer').set({
+                        sdp: peerConnection.localDescription.sdp,
+                        type: peerConnection.localDescription.type
+                    });
+                })
+                .catch(function(err) {
+                    console.error('Ошибка offer:', err);
+                });
+        }
+
+        peerConnection.onicecandidate = function(event) {
+            if (event.candidate) {
+                db.ref('calls').child(currentChat).child('candidate').push().set({
+                    candidate: event.candidate.candidate,
+                    sdpMid: event.candidate.sdpMid,
+                    sdpMLineIndex: event.candidate.sdpMLineIndex
+                });
+            }
+        };
+
+        peerConnection.ontrack = function(event) {
+            remoteStream = event.streams[0];
+            var audio = new Audio();
+            audio.srcObject = remoteStream;
+            audio.play();
+            audioStatus.textContent = '🔊 Разговор идёт...';
+            callBtn.textContent = '🔴 Положить трубку';
+            callBtn.classList.add('in-call');
+            isInCall = true;
+        };
+
+        // Слушаем offer (если мы получатель)
+        if (!isCaller) {
+            var offerRef = db.ref('calls').child(currentChat).child('offer');
+            offerRef.on('value', function(snap) {
+                var data = snap.val();
+                if (data) {
+                    offerRef.off();
+                    var desc = new RTCSessionDescription(data);
+                    peerConnection.setRemoteDescription(desc)
+                        .then(function() {
+                            return navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                        })
+                        .then(function(stream) {
+                            localStream = stream;
+                            localStream.getTracks().forEach(function(track) {
+                                peerConnection.addTrack(track, localStream);
+                            });
+                            return peerConnection.createAnswer();
+                        })
+                        .then(function(answer) {
+                            return peerConnection.setLocalDescription(answer);
+                        })
+                        .then(function() {
+                            db.ref('calls').child(currentChat).child('answer').set('accept');
+                            db.ref('calls').child(currentChat).child('offer').set({
+                                sdp: peerConnection.localDescription.sdp,
+                                type: peerConnection.localDescription.type
+                            });
+                        })
+                        .catch(function(err) {
+                            console.error('Ошибка answer:', err);
+                        });
                 }
             });
-    });
+        }
+
+        // Слушаем ICE кандидаты
+        var candidateRef = db.ref('calls').child(currentChat).child('candidate');
+        candidateRef.on('child_added', function(snap) {
+            var data = snap.val();
+            if (data) {
+                var candidate = new RTCIceCandidate(data);
+                peerConnection.addIceCandidate(candidate)
+                    .catch(function(err) {
+                        console.error('Ошибка ICE:', err);
+                    });
+            }
+        });
+    }
+
+    function endCall() {
+        if (peerConnection) {
+            peerConnection.close();
+            peerConnection = null;
+        }
+        if (localStream) {
+            localStream.getTracks().forEach(function(t) { t.stop(); });
+            localStream = null;
+        }
+        if (remoteStream) {
+            remoteStream.getTracks().forEach(function(t) { t.stop(); });
+            remoteStream = null;
+        }
+        isInCall = false;
+        callReceiverUid = null;
+        callBtn.textContent = '📞 Позвонить';
+        callBtn.classList.remove('in-call');
+        audioStatus.textContent = '📞 Звонок завершён';
+        db.ref('calls').child(currentChat).remove();
+    }
+
+    // ====== ОБРАБОТЧИКИ ЗВОНКОВ ======
+    callBtn.addEventListener('click', startCall);
+
+    // Слушаем входящие звонки
+    function listenForCalls() {
+        if (!currentUser) return;
+        var callsRef = db.ref('calls');
+        callsRef.on('child_added', function(snap) {
+            var data = snap.val();
+            var callerUid = snap.key;
+            if (callerUid === currentUser.uid) return;
+            if (data.from === currentUser.uid) return;
+            
+            // Показываем входящий звонок
+            incomingCall.classList.add('show');
+            callerName.textContent = data.fromName || 'Неизвестный';
+            window._incomingCallData = {
+                callerUid: callerUid,
+                callData: data
+            };
+        });
+    }
 
     // ====== ПРИНЯТЬ ЗВОНОК ======
     acceptCallBtn.addEventListener('click', function() {
-        var call = window._pendingCall;
-        if (!call) return;
+        var callData = window._incomingCallData;
+        if (!callData) return;
         incomingCall.classList.remove('show');
-        navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-            .then(function(stream) {
-                localStream = stream;
-                call.answer(stream);
-                call.on('stream', function(remoteStream) {
-                    var audio = new Audio();
-                    audio.srcObject = remoteStream;
-                    audio.play();
-                    audioStatus.textContent = '🔊 Разговор идёт...';
-                    callBtn.textContent = '🔴 Положить трубку';
-                    callBtn.classList.add('in-call');
-                    callReceiverUid = window._callerUid;
-                });
-                call.on('close', function() {
-                    endCall();
-                    audioStatus.textContent = '📞 Собеседник завершил звонок';
-                });
-                window._pendingCall = null;
-                audioStatus.textContent = '🔊 Звонок принят';
-            })
-            .catch(function(err) {
-                audioStatus.textContent = '❌ Ошибка: ' + err.message;
-                console.error('Ошибка принятия:', err);
-            });
+        
+        currentChat = callData.callerUid;
+        callReceiverUid = callData.callerUid;
+        db.ref('calls').child(currentChat).child('answer').set('accept');
+        audioStatus.textContent = '🔊 Звонок принят!';
+        startPeerConnection(false);
+        // Обновляем интерфейс
+        var user = allUsers.find(function(u) { return u.uid === currentChat; });
+        if (user) {
+            document.getElementById('headerName').textContent = user.name;
+            document.getElementById('headerUsername').textContent = '@' + user.username;
+            document.getElementById('headerAvatar').textContent = user.name.charAt(0).toUpperCase();
+            callBtn.style.display = 'inline-flex';
+        }
+        window._incomingCallData = null;
     });
 
     // ====== ОТКЛОНИТЬ ЗВОНОК ======
     rejectCallBtn.addEventListener('click', function() {
-        if (window._pendingCall) {
-            window._pendingCall.close();
-            window._pendingCall = null;
+        var callData = window._incomingCallData;
+        if (callData) {
+            db.ref('calls').child(callData.callerUid).child('answer').set('reject');
         }
         incomingCall.classList.remove('show');
+        window._incomingCallData = null;
         audioStatus.textContent = '❌ Звонок отклонён';
     });
 
@@ -847,6 +926,7 @@
         localStorage.setItem('discard_session_uid', uid);
         initChat(uid);
         getAudioDevices();
+        listenForCalls();
     }
 
     if (sessionUid) {
@@ -962,18 +1042,8 @@
             chatListener.off();
             chatListener = null;
         }
-        if (currentCall) {
-            currentCall.close();
-            currentCall = null;
-        }
-        if (localStream) {
-            localStream.getTracks().forEach(function(t) { t.stop(); });
-            localStream = null;
-        }
-        if (peer) {
-            peer.destroy();
-            peer = null;
-        }
+        endCall();
+        db.ref('calls').off();
         callBtn.style.display = 'none';
     });
 
@@ -993,7 +1063,6 @@
                 document.querySelector('.discard-brand span').textContent = 'Дискард (@' + currentUser.username + ')';
                 document.getElementById('sidebarUserName').textContent = currentUser.name;
                 document.getElementById('sidebarUserUsername').textContent = '@' + currentUser.username;
-                initPeer();
                 loadUsers();
                 setupChatListeners();
                 setupSettings();
@@ -1117,6 +1186,7 @@
     function subscribeToMessages(uid) {
         if (chatListener) {
             chatListener.off();
+            chatListener = null;
         }
         var chatRef = db.ref('messages').child(currentUser.uid).child(uid);
         chatListener = chatRef.orderByChild('time').limitToLast(1).on('child_added', function(snapshot) {
@@ -1300,7 +1370,7 @@
         });
     }
 
-    console.log('🔥 Дискард — голосовые звонки работают!');
+    console.log('🔥 Дискард с голосовыми звонками через Firebase');
 </script>
 </body>
 </html>
