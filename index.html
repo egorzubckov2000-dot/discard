@@ -136,7 +136,7 @@
       box-shadow: 0 12px 40px rgba(0,0,0,0.7);
     }
 
-    /* стили чата такие же как в прошлой версии */
+    /* стили чата */
     .discard-sidebar {
       width: 280px;
       background: #1e1f22;
@@ -565,7 +565,6 @@
       .then(() => {
         loginBtn.disabled = false;
         loginBtn.textContent = 'Войти';
-        // вход выполнен — покажем чат
       })
       .catch(err => {
         loginBtn.disabled = false;
@@ -592,8 +591,8 @@
           .then(() => {
             showSuccess('На почту отправлен код подтверждения. Введите его ниже.');
             showVerify();
-            // сохраняем email для повторной отправки
             window._verifyEmail = email;
+            window._verifyPassword = pass;
           })
           .catch(err => {
             showError('Ошибка отправки письма: ' + err.message);
@@ -613,45 +612,30 @@
     hideMessages();
     verifyBtn.disabled = true;
     verifyBtn.textContent = 'Проверка...';
-    // применяем код (Firebase сам проверит)
-    auth.currentUser.verifyPasswordResetCode(code) // не подходит
-      .then(() => {
-        // но мы просто проверяем, что пользователь подтверждён
-        auth.currentUser.reload().then(() => {
-          if (auth.currentUser.emailVerified) {
-            showSuccess('Почта подтверждена! Вход выполнен.');
-            setTimeout(() => {
-              // автоматически входим
-              auth.signInWithEmailAndPassword(
-                auth.currentUser.email,
-                regPassword.value // пароль из формы регистрации
-              ).catch(() => {});
-            }, 500);
-          } else {
-            showError('Код неверный или почта не подтверждена. Попробуйте ещё раз.');
-            verifyBtn.disabled = false;
-            verifyBtn.textContent = 'Подтвердить';
-          }
-        });
-      })
-      .catch(() => {
-        // альтернативный способ — просто проверяем emailVerified
-        auth.currentUser.reload().then(() => {
-          if (auth.currentUser.emailVerified) {
-            showSuccess('Почта подтверждена!');
-            setTimeout(() => {
-              auth.signInWithEmailAndPassword(
-                auth.currentUser.email,
-                regPassword.value
-              ).catch(() => {});
-            }, 500);
-          } else {
-            showError('Код неверный. Попробуйте ещё раз или запросите новый.');
-            verifyBtn.disabled = false;
-            verifyBtn.textContent = 'Подтвердить';
-          }
-        });
-      });
+    
+    // Проверяем, подтверждена ли почта
+    auth.currentUser.reload().then(() => {
+      if (auth.currentUser.emailVerified) {
+        showSuccess('Почта подтверждена! Вход выполнен.');
+        verifyBtn.disabled = false;
+        verifyBtn.textContent = 'Подтвердить';
+        // Автоматически входим
+        auth.signInWithEmailAndPassword(
+          auth.currentUser.email,
+          window._verifyPassword || ''
+        ).catch(() => {});
+      } else {
+        // Если не подтверждена — пробуем применить код через applyActionCode
+        // Но Firebase не даёт прямого API для кода из письма, поэтому предлагаем повторить
+        showError('Код неверный или почта ещё не подтверждена. Попробуйте ещё раз или запросите новый код.');
+        verifyBtn.disabled = false;
+        verifyBtn.textContent = 'Подтвердить';
+      }
+    }).catch(() => {
+      showError('Ошибка проверки. Попробуйте войти вручную после подтверждения почты.');
+      verifyBtn.disabled = false;
+      verifyBtn.textContent = 'Подтвердить';
+    });
   });
 
   // Повторная отправка кода
@@ -680,11 +664,15 @@
   // Выход
   logoutBtn.addEventListener('click', () => {
     auth.signOut().then(() => {
-      // показываем страницу входа
       app.style.display = 'none';
       authPage.style.display = 'block';
       showLogin();
       hideMessages();
+      // чистим слушатели
+      if (chatListener) {
+        chatListener.off();
+        chatListener = null;
+      }
     });
   });
 
@@ -703,6 +691,10 @@
       showVerify();
       showSuccess('Подтвердите почту. Код отправлен на ' + user.email);
       window._verifyEmail = user.email;
+      // сохраняем пароль, если он был введён при регистрации
+      if (!window._verifyPassword) {
+        window._verifyPassword = regPassword.value || '';
+      }
     } else {
       // не залогинен
       authPage.style.display = 'block';
@@ -720,7 +712,7 @@
   let chatListener = null;
 
   function initChat(email) {
-    currentUser = email.split('@')[0] || email; // имя пользователя = часть почты
+    currentUser = email.split('@')[0] || email;
     document.querySelector('.discard-brand span').textContent = 'Дискард (' + currentUser + ')';
     loadUsers();
     setupChatListeners();
@@ -861,8 +853,7 @@
       }
     });
 
-    // добавить пользователя (создать в базе)
-    // при первом входе создаём запись о пользователе
+    // добавить пользователя в базу
     const usersRef = db.ref('users');
     usersRef.child(currentUser).once('value', (snap) => {
       if (!snap.exists()) {
