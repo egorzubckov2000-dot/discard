@@ -676,10 +676,21 @@
             return;
         }
 
-        var targetUser = allUsers.find(function(u) { return u.uid === currentChat; });
+        var targetUser = null;
+        for (var i = 0; i < allUsers.length; i++) {
+            if (allUsers[i].uid === currentChat) {
+                targetUser = allUsers[i];
+                break;
+            }
+        }
         if (!targetUser) {
-            audioStatus.textContent = '❌ Пользователь не найден';
-            return;
+            // Если пользователь не найден в списке, но мы звоним себе — создаём заглушку
+            if (currentChat === currentUser.uid) {
+                targetUser = currentUser;
+            } else {
+                audioStatus.textContent = '❌ Пользователь не найден';
+                return;
+            }
         }
 
         // Показываем мини-окно
@@ -705,15 +716,16 @@
             .then(function() {
                 console.log('✅ ЗВОНОК: Данные отправлены в Firebase');
                 
-                // Таймаут 30 секунд
+                // Таймаут 30 секунд — звонок всегда завершается через 30 секунд
                 callTimeout = setTimeout(function() {
-                    if (isRinging) {
-                        callStatus.textContent = '⏰ Собеседник не отвечает';
+                    if (isRinging || isCallActive) {
+                        callStatus.textContent = '⏰ Звонок завершён (30 сек)';
                         callTimer.className = 'call-timer ended';
                         endCall();
                     }
                 }, 30000);
 
+                // Слушаем ответ
                 var answerRef = db.ref('calls').child(currentChat).child('answer');
                 answerRef.on('value', function(snap) {
                     var data = snap.val();
@@ -883,7 +895,7 @@
         callBtn.classList.remove('in-call');
         audioStatus.textContent = '📞 Звонок завершён';
         db.ref('calls').child(currentChat).remove();
-        closeCallWindow();
+        // Не закрываем окно — пусть пользователь закроет сам
     }
 
     function showCallWindow(user, mode) {
@@ -918,8 +930,7 @@
             var secs = String(elapsed % 60).padStart(2, '0');
             callTimer.textContent = mins + ':' + secs;
             if (mode === 'ringing' && elapsed >= 30) {
-                clearInterval(callTimerInterval);
-                callTimerInterval = null;
+                // Таймер продолжает идти, но мы уже завершили звонок по таймауту
             }
         }, 1000);
     }
@@ -957,7 +968,16 @@
             
             if (data.from === currentUser.uid) {
                 console.log('📞 ЗВОНОК: Звонок от себя, показываем окно');
-                var user = allUsers.find(function(u) { return u.uid === callerUid; });
+                var user = null;
+                for (var i = 0; i < allUsers.length; i++) {
+                    if (allUsers[i].uid === callerUid) {
+                        user = allUsers[i];
+                        break;
+                    }
+                }
+                if (!user && callerUid === currentUser.uid) {
+                    user = currentUser;
+                }
                 if (user) {
                     showCallWindow(user, 'ringing');
                     isRinging = true;
@@ -991,7 +1011,16 @@
         db.ref('calls').child(currentChat).child('answer').set('accept');
         audioStatus.textContent = '🔊 Звонок принят!';
         
-        var targetUser = allUsers.find(function(u) { return u.uid === currentChat; });
+        var targetUser = null;
+        for (var i = 0; i < allUsers.length; i++) {
+            if (allUsers[i].uid === currentChat) {
+                targetUser = allUsers[i];
+                break;
+            }
+        }
+        if (!targetUser) {
+            targetUser = currentUser;
+        }
         if (targetUser) {
             showCallWindow(targetUser, 'call');
             isCallActive = true;
@@ -1283,6 +1312,7 @@
             chatListener = null;
         }
         endCall();
+        closeCallWindow();
         db.ref('calls').off();
         callBtn.style.display = 'none';
     });
@@ -1620,7 +1650,7 @@
         });
     }
 
-    console.log('🔥 Дискард — мини-окно звонка с таймером!');
+    console.log('🔥 Дискард — звонок идёт всегда, даже если собеседник не в сети!');
 </script>
 </body>
 </html>
