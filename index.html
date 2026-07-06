@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Дискард — голосовые звонки</title>
+    <title>Дискард — звонки</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📡</text></svg>">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, sans-serif; }
@@ -265,7 +265,6 @@
         }
         .modal .audio-test-btn:hover { background: #4e5058; }
 
-        /* Модалка входящего звонка */
         .incoming-call {
             position: fixed;
             top: 0;
@@ -406,7 +405,6 @@
     </div>
 </div>
 
-<!-- Модалка входящего звонка -->
 <div class="incoming-call" id="incomingCall">
     <div class="call-box">
         <h2>📞 Входящий звонок</h2>
@@ -558,26 +556,34 @@
         }
 
         audioStatus.textContent = '📞 Идёт вызов...';
+        console.log('📞 ЗВОНОК: Начинаем звонок для', currentChat);
         navigator.mediaDevices.getUserMedia({ audio: true, video: false })
             .then(function(stream) {
                 localStream = stream;
+                console.log('✅ ЗВОНОК: Микрофон получен');
                 var callData = {
                     from: currentUser.uid,
                     fromName: currentUser.name,
                     timestamp: Date.now()
                 };
-                db.ref('calls').child(currentChat).set(callData);
+                return db.ref('calls').child(currentChat).set(callData);
+            })
+            .then(function() {
+                console.log('✅ ЗВОНОК: Данные отправлены в Firebase');
                 audioStatus.textContent = '📞 Ожидаем ответа...';
                 var answerRef = db.ref('calls').child(currentChat).child('answer');
                 answerRef.on('value', function(snap) {
                     var data = snap.val();
+                    console.log('📞 ЗВОНОК: Получен ответ:', data);
                     if (data === 'accept') {
                         answerRef.off();
                         audioStatus.textContent = '🔊 Звонок принят!';
+                        console.log('✅ ЗВОНОК: Собеседник принял');
                         startPeerConnection(true);
                     } else if (data === 'reject') {
                         answerRef.off();
                         audioStatus.textContent = '❌ Звонок отклонён';
+                        console.log('❌ ЗВОНОК: Собеседник отклонил');
                         endCall();
                     }
                 });
@@ -585,17 +591,19 @@
                     answerRef.off();
                     if (!isInCall) {
                         audioStatus.textContent = '⏰ Звонок не отвечен';
+                        console.log('⏰ ЗВОНОК: Таймаут');
                         endCall();
                     }
                 }, 30000);
             })
             .catch(function(err) {
                 audioStatus.textContent = '❌ Ошибка: ' + err.message;
-                console.error(err);
+                console.error('❌ ЗВОНОК:', err);
             });
     }
 
     function startPeerConnection(isCaller) {
+        console.log('🔊 ЗВОНОК: Начинаем WebRTC, isCaller=', isCaller);
         peerConnection = new RTCPeerConnection(servers);
         
         if (isCaller) {
@@ -607,18 +615,23 @@
                     return peerConnection.setLocalDescription(offer);
                 })
                 .then(function() {
-                    db.ref('calls').child(currentChat).child('offer').set({
+                    var offerData = {
                         sdp: peerConnection.localDescription.sdp,
                         type: peerConnection.localDescription.type
-                    });
+                    };
+                    return db.ref('calls').child(currentChat).child('offer').set(offerData);
+                })
+                .then(function() {
+                    console.log('✅ ЗВОНОК: Offer отправлен');
                 })
                 .catch(function(err) {
-                    console.error('Ошибка offer:', err);
+                    console.error('❌ ЗВОНОК Ошибка offer:', err);
                 });
         }
 
         peerConnection.onicecandidate = function(event) {
             if (event.candidate) {
+                console.log('✅ ЗВОНОК: ICE кандидат отправлен');
                 db.ref('calls').child(currentChat).child('candidate').push().set({
                     candidate: event.candidate.candidate,
                     sdpMid: event.candidate.sdpMid,
@@ -636,6 +649,7 @@
             callBtn.textContent = '🔴 Положить трубку';
             callBtn.classList.add('in-call');
             isInCall = true;
+            console.log('✅ ЗВОНОК: Трек получен, разговор начат');
         };
 
         if (!isCaller) {
@@ -643,6 +657,7 @@
             offerRef.on('value', function(snap) {
                 var data = snap.val();
                 if (data) {
+                    console.log('✅ ЗВОНОК: Получен Offer');
                     offerRef.off();
                     var desc = new RTCSessionDescription(data);
                     peerConnection.setRemoteDescription(desc)
@@ -661,13 +676,17 @@
                         })
                         .then(function() {
                             db.ref('calls').child(currentChat).child('answer').set('accept');
-                            db.ref('calls').child(currentChat).child('offer').set({
+                            var offerData = {
                                 sdp: peerConnection.localDescription.sdp,
                                 type: peerConnection.localDescription.type
-                            });
+                            };
+                            return db.ref('calls').child(currentChat).child('offer').set(offerData);
+                        })
+                        .then(function() {
+                            console.log('✅ ЗВОНОК: Answer отправлен');
                         })
                         .catch(function(err) {
-                            console.error('Ошибка answer:', err);
+                            console.error('❌ ЗВОНОК Ошибка answer:', err);
                         });
                 }
             });
@@ -680,13 +699,14 @@
                 var candidate = new RTCIceCandidate(data);
                 peerConnection.addIceCandidate(candidate)
                     .catch(function(err) {
-                        console.error('Ошибка ICE:', err);
+                        console.error('❌ ЗВОНОК Ошибка ICE:', err);
                     });
             }
         });
     }
 
     function endCall() {
+        console.log('📞 ЗВОНОК: Завершаем звонок');
         if (peerConnection) {
             peerConnection.close();
             peerConnection = null;
@@ -709,25 +729,29 @@
 
     callBtn.addEventListener('click', startCall);
 
-    // ====== СЛУШАЕМ ВХОДЯЩИЕ ЗВОНКИ (СРАЗУ ПОСЛЕ ВХОДА) ======
+    // ====== СЛУШАЕМ ВХОДЯЩИЕ ЗВОНКИ ======
     function listenForCalls() {
         if (!currentUser) {
-            console.warn('Нет пользователя');
+            console.warn('⚠️ ЗВОНОК: Нет пользователя');
             return;
         }
         var callsRef = db.ref('calls');
-        callsRef.off(); // Чистим старые подписки
+        callsRef.off();
+        console.log('📞 ЗВОНОК: Подписываемся на входящие');
         callsRef.on('child_added', function(snap) {
             var data = snap.val();
             var callerUid = snap.key;
+            console.log('📞 ЗВОНОК: Новый звонок от', callerUid, data.fromName);
+            if (callerUid === currentUser.uid) {
+                console.log('📞 ЗВОНОК: Звонок от себя, игнорируем');
+                return;
+            }
+            if (data.from === currentUser.uid) {
+                console.log('📞 ЗВОНОК: Звонок от себя (по from), игнорируем');
+                return;
+            }
             
-            // Если звонок от самого себя — игнорируем
-            if (callerUid === currentUser.uid) return;
-            if (data.from === currentUser.uid) return;
-            
-            console.log('Входящий звонок от:', data.fromName);
-            
-            // Показываем модалку
+            console.log('📞 ЗВОНОК: Показываем модалку');
             incomingCall.classList.add('show');
             callerName.textContent = data.fromName || 'Неизвестный';
             window._incomingCallData = {
@@ -740,16 +764,17 @@
     // ====== ПРИНЯТЬ ЗВОНОК ======
     acceptCallBtn.addEventListener('click', function() {
         var callData = window._incomingCallData;
-        if (!callData) return;
+        if (!callData) {
+            console.warn('⚠️ ЗВОНОК: Нет данных о звонке');
+            return;
+        }
         incomingCall.classList.remove('show');
-        
+        console.log('📞 ЗВОНОК: Принимаем звонок от', callData.callerUid);
         currentChat = callData.callerUid;
         callReceiverUid = callData.callerUid;
         db.ref('calls').child(currentChat).child('answer').set('accept');
         audioStatus.textContent = '🔊 Звонок принят!';
         startPeerConnection(false);
-        
-        // Обновляем интерфейс
         var user = allUsers.find(function(u) { return u.uid === currentChat; });
         if (user) {
             document.getElementById('headerName').textContent = user.name;
@@ -764,6 +789,7 @@
     rejectCallBtn.addEventListener('click', function() {
         var callData = window._incomingCallData;
         if (callData) {
+            console.log('📞 ЗВОНОК: Отклоняем звонок от', callData.callerUid);
             db.ref('calls').child(callData.callerUid).child('answer').set('reject');
         }
         incomingCall.classList.remove('show');
@@ -926,7 +952,6 @@
         localStorage.setItem('discard_session_uid', uid);
         initChat(uid);
         getAudioDevices();
-        // ПОДПИСЫВАЕМСЯ НА ЗВОНКИ СРАЗУ ПОСЛЕ ВХОДА
         listenForCalls();
     }
 
@@ -1370,7 +1395,7 @@
         });
     }
 
-    console.log('🔥 Дискард с голосовыми звонками!');
+    console.log('🔥 Дискард с голосовыми звонками (логи включены)');
 </script>
 </body>
 </html>
