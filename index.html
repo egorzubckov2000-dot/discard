@@ -951,8 +951,6 @@
         app.style.display = 'flex';
         localStorage.setItem('discard_session_uid', uid);
         initChat(uid);
-        getAudioDevices();
-        listenForCalls();
     }
 
     if (sessionUid) {
@@ -1073,7 +1071,7 @@
         callBtn.style.display = 'none';
     });
 
-    // ====== ЧАТ ======
+    // ====== ИНИЦИАЛИЗАЦИЯ ЧАТА (ИСПРАВЛЕННАЯ) ======
     function initChat(uid) {
         var userRef = db.ref('users').child(uid);
         userRef.once('value', function(snap) {
@@ -1089,9 +1087,13 @@
                 document.querySelector('.discard-brand span').textContent = 'Дискард (@' + currentUser.username + ')';
                 document.getElementById('sidebarUserName').textContent = currentUser.name;
                 document.getElementById('sidebarUserUsername').textContent = '@' + currentUser.username;
+                
+                // ЗАПУСКАЕМ ВСЁ ТОЛЬКО ПОСЛЕ ТОГО, КАК currentUser ГОТОВ
                 loadUsers();
                 setupChatListeners();
                 setupSettings();
+                getAudioDevices();
+                listenForCalls(); // <--- ПЕРЕНЕС СЮДА
             }
         });
     }
@@ -1211,7 +1213,12 @@
 
     function subscribeToMessages(uid) {
         if (chatListener) {
-            chatListener.off();
+            try {
+                chatListener.off();
+            } catch(e) {
+                console.warn('Ошибка при отписке:', e);
+            }
+            chatListener = null;
         }
         var chatRef = db.ref('messages').child(currentUser.uid).child(uid);
         chatListener = chatRef.orderByChild('time').limitToLast(1).on('child_added', function(snapshot) {
@@ -1395,7 +1402,7 @@
         });
     }
 
-    console.log('🔥 Дискард с голосовыми звонками (логи включены)');
+    console.log('🔥 Дискард с голосовыми звонками (исправленная версия)');
 </script>
 </body>
 </html>
