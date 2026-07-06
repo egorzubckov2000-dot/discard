@@ -709,15 +709,25 @@
 
     callBtn.addEventListener('click', startCall);
 
+    // ====== СЛУШАЕМ ВХОДЯЩИЕ ЗВОНКИ (СРАЗУ ПОСЛЕ ВХОДА) ======
     function listenForCalls() {
-        if (!currentUser) return;
+        if (!currentUser) {
+            console.warn('Нет пользователя');
+            return;
+        }
         var callsRef = db.ref('calls');
+        callsRef.off(); // Чистим старые подписки
         callsRef.on('child_added', function(snap) {
             var data = snap.val();
             var callerUid = snap.key;
+            
+            // Если звонок от самого себя — игнорируем
             if (callerUid === currentUser.uid) return;
             if (data.from === currentUser.uid) return;
             
+            console.log('Входящий звонок от:', data.fromName);
+            
+            // Показываем модалку
             incomingCall.classList.add('show');
             callerName.textContent = data.fromName || 'Неизвестный';
             window._incomingCallData = {
@@ -727,6 +737,7 @@
         });
     }
 
+    // ====== ПРИНЯТЬ ЗВОНОК ======
     acceptCallBtn.addEventListener('click', function() {
         var callData = window._incomingCallData;
         if (!callData) return;
@@ -737,6 +748,8 @@
         db.ref('calls').child(currentChat).child('answer').set('accept');
         audioStatus.textContent = '🔊 Звонок принят!';
         startPeerConnection(false);
+        
+        // Обновляем интерфейс
         var user = allUsers.find(function(u) { return u.uid === currentChat; });
         if (user) {
             document.getElementById('headerName').textContent = user.name;
@@ -747,6 +760,7 @@
         window._incomingCallData = null;
     });
 
+    // ====== ОТКЛОНИТЬ ЗВОНОК ======
     rejectCallBtn.addEventListener('click', function() {
         var callData = window._incomingCallData;
         if (callData) {
@@ -912,6 +926,7 @@
         localStorage.setItem('discard_session_uid', uid);
         initChat(uid);
         getAudioDevices();
+        // ПОДПИСЫВАЕМСЯ НА ЗВОНКИ СРАЗУ ПОСЛЕ ВХОДА
         listenForCalls();
     }
 
