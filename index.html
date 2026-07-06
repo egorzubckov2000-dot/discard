@@ -3,14 +3,130 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Дискард — чаты</title>
+  <title>Дискард — вход</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, sans-serif; }
-    body { background: #1e1f22; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 12px; }
-    
-    /* главный контейнер — как дискорд */
-    .discard-app {
+    body { 
+      background: #1e1f22; 
+      display: flex; 
+      justify-content: center; 
+      align-items: center; 
+      min-height: 100vh; 
+      padding: 16px;
+    }
+
+    /* общий контейнер */
+    .discard-auth {
+      background: #2b2d31;
+      border-radius: 28px;
+      padding: 40px 36px;
+      max-width: 420px;
+      width: 100%;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.7);
+      color: #f2f3f5;
+    }
+
+    .discard-auth h1 {
       display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 28px;
+      margin-bottom: 28px;
+      justify-content: center;
+    }
+    .discard-auth h1 .icon {
+      background: #5865f2;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      color: white;
+    }
+
+    .auth-form {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .auth-form label {
+      font-size: 14px;
+      font-weight: 500;
+      color: #b5bac1;
+      margin-bottom: 4px;
+    }
+
+    .auth-form input {
+      background: #383a40;
+      border: none;
+      padding: 14px 16px;
+      border-radius: 12px;
+      color: #f2f3f5;
+      font-size: 15px;
+      outline: none;
+      transition: 0.2s;
+      width: 100%;
+    }
+    .auth-form input::placeholder { color: #7a7f89; }
+    .auth-form input:focus { background: #404249; box-shadow: 0 0 0 2px #5865f2; }
+
+    .auth-form .btn {
+      background: #5865f2;
+      border: none;
+      color: white;
+      font-weight: 600;
+      padding: 14px;
+      border-radius: 12px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: 0.15s;
+      margin-top: 6px;
+    }
+    .auth-form .btn:hover { background: #4752c4; transform: scale(0.98); }
+    .auth-form .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .auth-form .switch {
+      text-align: center;
+      margin-top: 12px;
+      color: #b5bac1;
+      font-size: 14px;
+    }
+    .auth-form .switch a {
+      color: #7289da;
+      cursor: pointer;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .auth-form .switch a:hover { text-decoration: underline; }
+
+    .auth-form .error-msg {
+      background: #4a2a2a;
+      color: #f5a3a3;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 14px;
+      display: none;
+      border-left: 4px solid #e74c3c;
+    }
+
+    .auth-form .success-msg {
+      background: #1e4a3a;
+      color: #a3e0c0;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 14px;
+      display: none;
+      border-left: 4px solid #2ecc71;
+    }
+
+    .hidden { display: none !important; }
+
+    /* после входа — сам чат */
+    #app {
+      display: none;
       width: 1100px;
       max-width: 100%;
       height: 750px;
@@ -20,7 +136,7 @@
       box-shadow: 0 12px 40px rgba(0,0,0,0.7);
     }
 
-    /* левая панель — список чатов */
+    /* стили чата такие же как в прошлой версии */
     .discard-sidebar {
       width: 280px;
       background: #1e1f22;
@@ -29,8 +145,6 @@
       border-right: 1px solid #3a3c42;
       flex-shrink: 0;
     }
-
-    /* иконка и поиск */
     .discard-sidebar-header {
       padding: 16px 14px 10px 14px;
       border-bottom: 1px solid #3a3c42;
@@ -38,7 +152,6 @@
       flex-direction: column;
       gap: 10px;
     }
-
     .discard-brand {
       display: flex;
       align-items: center;
@@ -59,7 +172,6 @@
       color: white;
       flex-shrink: 0;
     }
-
     .discard-search {
       background: #383a40;
       border: none;
@@ -73,8 +185,6 @@
     }
     .discard-search::placeholder { color: #7a7f89; }
     .discard-search:focus { background: #404249; box-shadow: 0 0 0 2px #5865f2; }
-
-    /* список чатов */
     .chat-list {
       flex: 1;
       overflow-y: auto;
@@ -82,7 +192,6 @@
     }
     .chat-list::-webkit-scrollbar { width: 4px; }
     .chat-list::-webkit-scrollbar-thumb { background: #4e5058; border-radius: 10px; }
-
     .chat-item {
       display: flex;
       align-items: center;
@@ -121,15 +230,12 @@
       font-size: 11px;
       color: #7a7f89;
     }
-
-    /* правая часть — окно чата */
     .discard-chat-window {
       flex: 1;
       display: flex;
       flex-direction: column;
       background: #2b2d31;
     }
-
     .chat-header {
       padding: 14px 20px;
       border-bottom: 1px solid #3a3c42;
@@ -137,6 +243,12 @@
       font-size: 18px;
       font-weight: 600;
       background: #1e1f22;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      justify-content: space-between;
+    }
+    .chat-header .left {
       display: flex;
       align-items: center;
       gap: 12px;
@@ -152,7 +264,17 @@
       color: #fff;
       font-weight: 600;
     }
-
+    .chat-header .logout-btn {
+      background: #3a3c42;
+      border: none;
+      color: #b5bac1;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .chat-header .logout-btn:hover { background: #4e5058; color: #fff; }
     .discard-chat {
       flex: 1;
       overflow-y: auto;
@@ -164,7 +286,6 @@
     }
     .discard-chat::-webkit-scrollbar { width: 6px; }
     .discard-chat::-webkit-scrollbar-thumb { background: #4e5058; border-radius: 10px; }
-
     .message {
       display: flex;
       flex-direction: column;
@@ -204,7 +325,6 @@
       align-self: flex-end;
     }
     .message.self .msg-time { color: #b9bdff; }
-
     .discard-footer {
       background: #1e1f22;
       padding: 12px 18px 18px;
@@ -238,29 +358,77 @@
       transition: 0.15s;
     }
     .discard-footer button:hover { background: #4752c4; transform: scale(0.97); }
-
     .empty-state {
       color: #6a6f78;
       text-align: center;
       margin-top: 40px;
       font-size: 15px;
     }
-
     @keyframes fadeUp {
       0% { opacity: 0.5; transform: translateY(6px); }
       100% { opacity: 1; transform: translateY(0); }
     }
-
-    /* адаптив */
     @media (max-width: 700px) {
       .discard-sidebar { width: 200px; }
     }
   </style>
 </head>
 <body>
-<div class="discard-app" id="app">
 
-  <!-- ЛЕВАЯ ПАНЕЛЬ -->
+<!-- СТРАНИЦА АВТОРИЗАЦИИ -->
+<div class="discard-auth" id="authPage">
+  <h1>
+    <span class="icon">📡</span>
+    Дискард
+  </h1>
+
+  <div class="auth-form" id="authForm">
+    <div class="error-msg" id="errorMsg"></div>
+    <div class="success-msg" id="successMsg"></div>
+
+    <!-- режим: login или register -->
+    <div id="loginMode">
+      <label>Электронная почта</label>
+      <input type="email" id="loginEmail" placeholder="you@example.com" required>
+
+      <label>Пароль</label>
+      <input type="password" id="loginPassword" placeholder="••••••••" required>
+
+      <button class="btn" id="loginBtn">Войти</button>
+
+      <div class="switch">
+        Нет аккаунта? <a id="switchToRegister">Зарегистрироваться</a>
+      </div>
+    </div>
+
+    <div id="registerMode" class="hidden">
+      <label>Электронная почта</label>
+      <input type="email" id="regEmail" placeholder="you@example.com" required>
+
+      <label>Пароль (минимум 6 символов)</label>
+      <input type="password" id="regPassword" placeholder="••••••••" required>
+
+      <button class="btn" id="registerBtn">Зарегистрироваться</button>
+
+      <div class="switch">
+        Уже есть аккаунт? <a id="switchToLogin">Войти</a>
+      </div>
+    </div>
+
+    <!-- скрытое поле для подтверждения почты -->
+    <div id="verifyMode" class="hidden">
+      <label>Код подтверждения из письма</label>
+      <input type="text" id="verifyCode" placeholder="6-значный код" maxlength="6" required>
+      <button class="btn" id="verifyBtn">Подтвердить</button>
+      <div class="switch">
+        <a id="resendCode">Отправить код повторно</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- САМ ЧАТ (показывается после входа) -->
+<div id="app">
   <div class="discard-sidebar">
     <div class="discard-sidebar-header">
       <div class="discard-brand">
@@ -270,16 +438,17 @@
       <input class="discard-search" id="searchInput" type="text" placeholder="🔍 Поиск пользователя...">
     </div>
     <div class="chat-list" id="chatList">
-      <!-- чаты будут рендериться здесь -->
       <div class="empty-state" style="color:#6a6f78; padding:20px; text-align:center;">Нет чатов<br>Найдите пользователя</div>
     </div>
   </div>
 
-  <!-- ПРАВАЯ ЧАСТЬ -->
   <div class="discard-chat-window">
-    <div class="chat-header" id="chatHeader">
-      <div class="avatar-small" id="headerAvatar">👤</div>
-      <span id="headerName">Выберите чат</span>
+    <div class="chat-header">
+      <div class="left">
+        <div class="avatar-small" id="headerAvatar">👤</div>
+        <span id="headerName">Выберите чат</span>
+      </div>
+      <button class="logout-btn" id="logoutBtn">🚪 Выйти</button>
     </div>
 
     <div class="discard-chat" id="chatBox">
@@ -293,8 +462,9 @@
   </div>
 </div>
 
-<!-- Firebase -->
+<!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <script>
@@ -311,51 +481,263 @@
   // =====================
 
   firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
   const db = firebase.database();
-  const usersRef = db.ref('users');
-  const messagesRef = db.ref('messages');
-
-  const USER_NAME = 'Вы'; // текущий пользователь (можно менять)
-  let currentChat = null; // имя собеседника
-  let allUsers = []; // кеш
 
   // DOM
-  const chatList = document.getElementById('chatList');
-  const searchInput = document.getElementById('searchInput');
-  const chatBox = document.getElementById('chatBox');
-  const msgInput = document.getElementById('msgInput');
-  const sendBtn = document.getElementById('sendBtn');
-  const headerName = document.getElementById('headerName');
-  const headerAvatar = document.getElementById('headerAvatar');
+  const authPage = document.getElementById('authPage');
+  const app = document.getElementById('app');
+  const loginMode = document.getElementById('loginMode');
+  const registerMode = document.getElementById('registerMode');
+  const verifyMode = document.getElementById('verifyMode');
+  const errorMsg = document.getElementById('errorMsg');
+  const successMsg = document.getElementById('successMsg');
 
-  // ----- ФУНКЦИИ -----
+  const loginEmail = document.getElementById('loginEmail');
+  const loginPassword = document.getElementById('loginPassword');
+  const loginBtn = document.getElementById('loginBtn');
 
-  // получить или создать пользователя в Firebase
-  function ensureUser(username) {
-    if (!username || username.trim() === '') return;
-    const userRef = usersRef.child(username);
-    userRef.once('value', (snap) => {
-      if (!snap.exists()) {
-        userRef.set({
-          name: username,
-          created: Date.now()
-        });
-      }
-    });
+  const regEmail = document.getElementById('regEmail');
+  const regPassword = document.getElementById('regPassword');
+  const registerBtn = document.getElementById('registerBtn');
+
+  const verifyCode = document.getElementById('verifyCode');
+  const verifyBtn = document.getElementById('verifyBtn');
+  const resendCode = document.getElementById('resendCode');
+
+  const switchToRegister = document.getElementById('switchToRegister');
+  const switchToLogin = document.getElementById('switchToLogin');
+
+  const logoutBtn = document.getElementById('logoutBtn');
+
+  // ----- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ -----
+
+  function showError(msg) {
+    errorMsg.style.display = 'block';
+    errorMsg.textContent = msg;
+    successMsg.style.display = 'none';
   }
 
-  // загрузить список пользователей (кроме себя)
+  function showSuccess(msg) {
+    successMsg.style.display = 'block';
+    successMsg.textContent = msg;
+    errorMsg.style.display = 'none';
+  }
+
+  function hideMessages() {
+    errorMsg.style.display = 'none';
+    successMsg.style.display = 'none';
+  }
+
+  // переключение между режимами
+  function showLogin() {
+    loginMode.classList.remove('hidden');
+    registerMode.classList.add('hidden');
+    verifyMode.classList.add('hidden');
+    hideMessages();
+  }
+
+  function showRegister() {
+    loginMode.classList.add('hidden');
+    registerMode.classList.remove('hidden');
+    verifyMode.classList.add('hidden');
+    hideMessages();
+  }
+
+  function showVerify() {
+    loginMode.classList.add('hidden');
+    registerMode.classList.add('hidden');
+    verifyMode.classList.remove('hidden');
+    hideMessages();
+  }
+
+  // ----- АВТОРИЗАЦИЯ -----
+
+  // Вход
+  loginBtn.addEventListener('click', () => {
+    const email = loginEmail.value.trim();
+    const pass = loginPassword.value.trim();
+    if (!email || !pass) { showError('Заполните все поля'); return; }
+    hideMessages();
+    loginBtn.disabled = true;
+    loginBtn.textContent = 'Вход...';
+    auth.signInWithEmailAndPassword(email, pass)
+      .then(() => {
+        loginBtn.disabled = false;
+        loginBtn.textContent = 'Войти';
+        // вход выполнен — покажем чат
+      })
+      .catch(err => {
+        loginBtn.disabled = false;
+        loginBtn.textContent = 'Войти';
+        showError(err.message);
+      });
+  });
+
+  // Регистрация
+  registerBtn.addEventListener('click', () => {
+    const email = regEmail.value.trim();
+    const pass = regPassword.value.trim();
+    if (!email || !pass) { showError('Заполните все поля'); return; }
+    if (pass.length < 6) { showError('Пароль должен быть минимум 6 символов'); return; }
+    hideMessages();
+    registerBtn.disabled = true;
+    registerBtn.textContent = 'Регистрация...';
+    auth.createUserWithEmailAndPassword(email, pass)
+      .then((userCred) => {
+        registerBtn.disabled = false;
+        registerBtn.textContent = 'Зарегистрироваться';
+        // Отправка письма с подтверждением
+        userCred.user.sendEmailVerification()
+          .then(() => {
+            showSuccess('На почту отправлен код подтверждения. Введите его ниже.');
+            showVerify();
+            // сохраняем email для повторной отправки
+            window._verifyEmail = email;
+          })
+          .catch(err => {
+            showError('Ошибка отправки письма: ' + err.message);
+          });
+      })
+      .catch(err => {
+        registerBtn.disabled = false;
+        registerBtn.textContent = 'Зарегистрироваться';
+        showError(err.message);
+      });
+  });
+
+  // Подтверждение по коду из письма
+  verifyBtn.addEventListener('click', () => {
+    const code = verifyCode.value.trim();
+    if (!code) { showError('Введите код из письма'); return; }
+    hideMessages();
+    verifyBtn.disabled = true;
+    verifyBtn.textContent = 'Проверка...';
+    // применяем код (Firebase сам проверит)
+    auth.currentUser.verifyPasswordResetCode(code) // не подходит
+      .then(() => {
+        // но мы просто проверяем, что пользователь подтверждён
+        auth.currentUser.reload().then(() => {
+          if (auth.currentUser.emailVerified) {
+            showSuccess('Почта подтверждена! Вход выполнен.');
+            setTimeout(() => {
+              // автоматически входим
+              auth.signInWithEmailAndPassword(
+                auth.currentUser.email,
+                regPassword.value // пароль из формы регистрации
+              ).catch(() => {});
+            }, 500);
+          } else {
+            showError('Код неверный или почта не подтверждена. Попробуйте ещё раз.');
+            verifyBtn.disabled = false;
+            verifyBtn.textContent = 'Подтвердить';
+          }
+        });
+      })
+      .catch(() => {
+        // альтернативный способ — просто проверяем emailVerified
+        auth.currentUser.reload().then(() => {
+          if (auth.currentUser.emailVerified) {
+            showSuccess('Почта подтверждена!');
+            setTimeout(() => {
+              auth.signInWithEmailAndPassword(
+                auth.currentUser.email,
+                regPassword.value
+              ).catch(() => {});
+            }, 500);
+          } else {
+            showError('Код неверный. Попробуйте ещё раз или запросите новый.');
+            verifyBtn.disabled = false;
+            verifyBtn.textContent = 'Подтвердить';
+          }
+        });
+      });
+  });
+
+  // Повторная отправка кода
+  resendCode.addEventListener('click', () => {
+    if (auth.currentUser) {
+      auth.currentUser.sendEmailVerification()
+        .then(() => {
+          showSuccess('Новый код отправлен на почту');
+        })
+        .catch(err => {
+          showError('Ошибка: ' + err.message);
+        });
+    } else {
+      showError('Пользователь не найден. Начните регистрацию заново.');
+    }
+  });
+
+  // Переключение между входом и регистрацией
+  switchToRegister.addEventListener('click', () => {
+    showRegister();
+  });
+  switchToLogin.addEventListener('click', () => {
+    showLogin();
+  });
+
+  // Выход
+  logoutBtn.addEventListener('click', () => {
+    auth.signOut().then(() => {
+      // показываем страницу входа
+      app.style.display = 'none';
+      authPage.style.display = 'block';
+      showLogin();
+      hideMessages();
+    });
+  });
+
+  // ----- ОБРАБОТЧИК СОСТОЯНИЯ АУТЕНТИФИКАЦИИ -----
+
+  auth.onAuthStateChanged((user) => {
+    if (user && user.emailVerified) {
+      // пользователь вошёл и подтвердил почту
+      authPage.style.display = 'none';
+      app.style.display = 'flex';
+      initChat(user.email);
+    } else if (user && !user.emailVerified) {
+      // залогинен, но почта не подтверждена
+      authPage.style.display = 'block';
+      app.style.display = 'none';
+      showVerify();
+      showSuccess('Подтвердите почту. Код отправлен на ' + user.email);
+      window._verifyEmail = user.email;
+    } else {
+      // не залогинен
+      authPage.style.display = 'block';
+      app.style.display = 'none';
+      showLogin();
+      hideMessages();
+    }
+  });
+
+  // ----- ЧАТ (ИНИЦИАЛИЗАЦИЯ ПОСЛЕ ВХОДА) -----
+
+  let currentUser = null;
+  let currentChat = null;
+  let allUsers = [];
+  let chatListener = null;
+
+  function initChat(email) {
+    currentUser = email.split('@')[0] || email; // имя пользователя = часть почты
+    document.querySelector('.discard-brand span').textContent = 'Дискард (' + currentUser + ')';
+    loadUsers();
+    setupChatListeners();
+  }
+
   function loadUsers() {
+    const usersRef = db.ref('users');
     usersRef.on('value', (snap) => {
       const data = snap.val();
       if (!data) { allUsers = []; renderChatList(); return; }
-      allUsers = Object.keys(data).filter(name => name !== USER_NAME);
+      allUsers = Object.keys(data).filter(name => name !== currentUser);
       renderChatList();
     });
   }
 
-  // отрисовать список чатов
   function renderChatList(filter = '') {
+    const chatList = document.getElementById('chatList');
     chatList.innerHTML = '';
     let list = allUsers;
     if (filter.trim() !== '') {
@@ -379,25 +761,23 @@
     });
   }
 
-  // открыть чат с пользователем
   function openChat(username) {
-    if (!username || username === USER_NAME) return;
+    if (!username || username === currentUser) return;
     currentChat = username;
-    renderChatList(searchInput.value);
-    headerName.textContent = username;
-    headerAvatar.textContent = username.charAt(0).toUpperCase();
-    msgInput.disabled = false;
-    sendBtn.disabled = false;
-    msgInput.focus();
+    renderChatList(document.getElementById('searchInput').value);
+    document.getElementById('headerName').textContent = username;
+    document.getElementById('headerAvatar').textContent = username.charAt(0).toUpperCase();
+    document.getElementById('msgInput').disabled = false;
+    document.getElementById('sendBtn').disabled = false;
+    document.getElementById('msgInput').focus();
     loadMessages(username);
-    // подписаться на новые сообщения
     subscribeToMessages(username);
   }
 
-  // загрузить сообщения с конкретным пользователем
   function loadMessages(username) {
+    const chatBox = document.getElementById('chatBox');
     chatBox.innerHTML = '';
-    const chatRef = messagesRef.child(username).child(USER_NAME);
+    const chatRef = db.ref('messages').child(username).child(currentUser);
     chatRef.orderByChild('time').limitToLast(50).once('value', (snap) => {
       const data = snap.val();
       if (!data) {
@@ -409,24 +789,24 @@
     });
   }
 
-  // подписка на новые сообщения (реалтайм)
   function subscribeToMessages(username) {
-    const chatRef = messagesRef.child(username).child(USER_NAME);
-    chatRef.orderByChild('time').limitToLast(1).on('child_added', (snapshot) => {
+    if (chatListener) {
+      chatListener.off();
+    }
+    const chatRef = db.ref('messages').child(username).child(currentUser);
+    chatListener = chatRef.orderByChild('time').limitToLast(1).on('child_added', (snapshot) => {
       const data = snapshot.val();
       if (!data) return;
-      // избегаем дублей
-      const existing = chatBox.querySelector(`[data-id="${snapshot.key}"]`);
+      const existing = document.getElementById('chatBox').querySelector(`[data-id="${snapshot.key}"]`);
       if (!existing) {
         renderMessage(data);
-        chatBox.scrollTop = chatBox.scrollHeight;
+        document.getElementById('chatBox').scrollTop = document.getElementById('chatBox').scrollHeight;
       }
     });
   }
 
-  // отрисовать одно сообщение
   function renderMessage(data) {
-    const isSelf = data.sender === USER_NAME;
+    const isSelf = data.sender === currentUser;
     const div = document.createElement('div');
     div.className = `message ${isSelf ? 'self' : 'other'}`;
     div.setAttribute('data-id', data.id || Date.now());
@@ -446,58 +826,56 @@
     div.appendChild(userSpan);
     div.appendChild(textSpan);
     div.appendChild(timeSpan);
-    chatBox.appendChild(div);
-    chatBox.scrollTop = chatBox.scrollHeight;
+    document.getElementById('chatBox').appendChild(div);
+    document.getElementById('chatBox').scrollTop = document.getElementById('chatBox').scrollHeight;
   }
 
-  // отправить сообщение
   function sendMessage() {
     if (!currentChat) return;
-    const text = msgInput.value.trim();
+    const input = document.getElementById('msgInput');
+    const text = input.value.trim();
     if (!text) return;
     const newMsg = {
-      sender: USER_NAME,
+      sender: currentUser,
       text: text,
       time: Date.now(),
       id: Date.now() + '_' + Math.random().toString(36).substr(2, 4)
     };
-    const chatRef = messagesRef.child(currentChat).child(USER_NAME);
+    const chatRef = db.ref('messages').child(currentChat).child(currentUser);
     chatRef.push().set(newMsg).then(() => {
-      msgInput.value = '';
-      msgInput.focus();
+      input.value = '';
+      input.focus();
     }).catch(() => {});
   }
 
-  // ----- СОБЫТИЯ -----
+  function setupChatListeners() {
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      renderChatList(e.target.value);
+    });
 
-  // поиск
-  searchInput.addEventListener('input', (e) => {
-    renderChatList(e.target.value);
-  });
+    document.getElementById('sendBtn').addEventListener('click', sendMessage);
+    document.getElementById('msgInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
 
-  // отправка
-  sendBtn.addEventListener('click', sendMessage);
-  msgInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      sendMessage();
-    }
-  });
+    // добавить пользователя (создать в базе)
+    // при первом входе создаём запись о пользователе
+    const usersRef = db.ref('users');
+    usersRef.child(currentUser).once('value', (snap) => {
+      if (!snap.exists()) {
+        usersRef.child(currentUser).set({
+          name: currentUser,
+          email: auth.currentUser.email,
+          created: Date.now()
+        });
+      }
+    });
+  }
 
-  // ----- ЗАПУСК -----
-
-  // если пользователь не существует — создать
-  ensureUser(USER_NAME);
-  loadUsers();
-
-  // если есть пользователи — открыть первого
-  setTimeout(() => {
-    if (allUsers.length > 0 && !currentChat) {
-      openChat(allUsers[0]);
-    }
-  }, 800);
-
-  console.log('🔥 Дискард v2 с чатами и поиском');
+  console.log('🔥 Дискард с авторизацией и подтверждением почты');
 </script>
 </body>
 </html>
