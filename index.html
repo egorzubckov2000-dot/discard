@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Дискард — чат</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, sans-serif; }
         body { background: #1e1f22; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 16px; }
 
         .discard-auth {
@@ -332,7 +332,6 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <script>
-    // ====== КОНФИГ ======
     const firebaseConfig = {
         apiKey: "AIzaSyBEaTlUs6XtXnnNbPITo70upMX12lDxKk4",
         authDomain: "discard-mess.firebaseapp.com",
@@ -342,12 +341,10 @@
         messagingSenderId: "343493809803",
         appId: "1:343493809803:web:b2dc5d99fad37fa39ce68e"
     };
-    // =====================
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // DOM
     const authPage = document.getElementById('authPage');
     const app = document.getElementById('app');
     const loginMode = document.getElementById('loginMode');
@@ -390,7 +387,6 @@
     let usernameAvailable = false;
     let sessionUid = localStorage.getItem('discard_session_uid');
 
-    // ----- ФУНКЦИИ -----
     function showError(msg, hint = '') {
         errorMsg.style.display = 'block';
         errorText.textContent = msg;
@@ -419,7 +415,6 @@
         hideMessages();
     }
 
-    // ----- ПРОВЕРКА ЮЗЕРНЕЙМА -----
     regUsername.addEventListener('input', () => {
         const username = regUsername.value.trim();
         if (!username) {
@@ -447,7 +442,6 @@
         });
     });
 
-    // ====== ВХОД С СОХРАНЕНИЕМ СЕССИИ ======
     function loginUser(uid) {
         authPage.style.display = 'none';
         app.style.display = 'flex';
@@ -455,7 +449,6 @@
         initChat(uid);
     }
 
-    // Проверяем сохранённую сессию
     if (sessionUid) {
         db.ref('users').child(sessionUid).once('value', (snap) => {
             if (snap.exists()) {
@@ -476,7 +469,6 @@
         });
     }
 
-    // ----- ВХОД -----
     loginBtn.addEventListener('click', () => {
         const username = loginUsername.value.trim();
         const pass = loginPassword.value.trim();
@@ -512,7 +504,6 @@
         });
     });
 
-    // ----- РЕГИСТРАЦИЯ -----
     registerBtn.addEventListener('click', () => {
         const username = regUsername.value.trim();
         const name = regName.value.trim();
@@ -554,11 +545,9 @@
         });
     });
 
-    // ----- ПЕРЕКЛЮЧЕНИЕ -----
     switchToRegister.addEventListener('click', showRegister);
     switchToLogin.addEventListener('click', showLogin);
 
-    // ----- ВЫХОД -----
     logoutBtn.addEventListener('click', () => {
         localStorage.removeItem('discard_session_uid');
         sessionUid = null;
@@ -569,7 +558,6 @@
         if (chatListener) { chatListener.off(); chatListener = null; }
     });
 
-    // ====== ЧАТ ======
     function initChat(uid) {
         const userRef = db.ref('users').child(uid);
         userRef.once('value', (snap) => {
@@ -658,7 +646,8 @@
     function loadMessages(uid) {
         const chatBox = document.getElementById('chatBox');
         chatBox.innerHTML = '';
-        const chatRef = db.ref('messages').child(uid).child(currentUser.uid);
+        // Загружаем сообщения из ВЕТКИ ТЕКУЩЕГО ПОЛЬЗОВАТЕЛЯ (где он получатель)
+        const chatRef = db.ref('messages').child(currentUser.uid).child(uid);
         chatRef.orderByChild('time').limitToLast(50).once('value', (snap) => {
             const data = snap.val();
             if (!data) {
@@ -674,7 +663,8 @@
     // ====== ПОДПИСКА НА НОВЫЕ СООБЩЕНИЯ (РЕАЛЬНОЕ ВРЕМЯ) ======
     function subscribeToMessages(uid) {
         if (chatListener) { chatListener.off(); }
-        const chatRef = db.ref('messages').child(uid).child(currentUser.uid);
+        // Подписываемся на ВЕТКУ ТЕКУЩЕГО ПОЛЬЗОВАТЕЛЯ (где он получатель)
+        const chatRef = db.ref('messages').child(currentUser.uid).child(uid);
         chatListener = chatRef.orderByChild('time').limitToLast(1).on('child_added', (snapshot) => {
             const data = snapshot.val();
             if (!data) return;
@@ -717,26 +707,30 @@
         document.getElementById('chatBox').scrollTop = document.getElementById('chatBox').scrollHeight;
     }
 
-    // ====== ОТПРАВКА СООБЩЕНИЯ ======
+    // ====== ОТПРАВКА СООБЩЕНИЯ (В ОБЕ ВЕТКИ) ======
     function sendMessage() {
         if (!currentChat) return;
         const input = document.getElementById('msgInput');
         const text = input.value.trim();
         if (!text) return;
+
         const newMsg = {
             sender: currentUser.uid,
             text: text,
             time: Date.now(),
             id: Date.now() + '_' + Math.random().toString(36).substr(2, 4)
         };
-        const chatRef = db.ref('messages').child(currentChat).child(currentUser.uid);
-        chatRef.push().set(newMsg).then(() => {
-            input.value = '';
-            input.focus();
-        }).catch((err) => {
-            console.error('Ошибка отправки:', err);
-            showError('❌ Ошибка отправки: ' + err.message);
-        });
+
+        // Сохраняем в ветку СОБЕСЕДНИКА (user1 → user2)
+        const chatRef1 = db.ref('messages').child(currentChat).child(currentUser.uid);
+        chatRef1.push().set(newMsg);
+
+        // Сохраняем в ветку ТЕКУЩЕГО ПОЛЬЗОВАТЕЛЯ (user2 → user1)
+        const chatRef2 = db.ref('messages').child(currentUser.uid).child(currentChat);
+        chatRef2.push().set(newMsg);
+
+        input.value = '';
+        input.focus();
     }
 
     function setupChatListeners() {
@@ -749,7 +743,6 @@
         });
     }
 
-    // ----- НАСТРОЙКИ -----
     function setupSettings() {
         settingsBtn.addEventListener('click', () => {
             settingsName.value = currentUser.name || '';
@@ -824,7 +817,7 @@
         });
     }
 
-    console.log('🔥 Дискард — стабильная версия с сессией');
+    console.log('🔥 Дискард — сообщения доходят обоим');
 </script>
 </body>
 </html>
