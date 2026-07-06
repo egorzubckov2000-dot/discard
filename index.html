@@ -133,6 +133,27 @@
         .chat-header .chat-header-info { min-width: 0; }
         .chat-header .chat-header-name { font-size: 18px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .chat-header .chat-header-username { font-size: 13px; font-weight: 400; color: #7a7f89; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* КНОПКА ЗВОНКА */
+        .chat-header .call-btn {
+            background: #2ecc71;
+            border: none;
+            color: white;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .chat-header .call-btn:hover { background: #27ae60; }
+        .chat-header .call-btn.in-call {
+            background: #e74c3c;
+        }
+        .chat-header .call-btn.in-call:hover { background: #c0392b; }
+
         .chat-header .logout-btn {
             background: #3a3c42; border: none; color: #b5bac1;
             padding: 6px 14px; border-radius: 20px; font-size: 13px; cursor: pointer; transition: 0.2s;
@@ -220,9 +241,55 @@
             border-left: 4px solid #e74c3c;
         }
 
+        /* Модалка входящего звонка */
+        .incoming-call {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(6px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            flex-direction: column;
+        }
+        .incoming-call.show { display: flex; }
+        .incoming-call .call-box {
+            background: #2b2d31;
+            padding: 40px 50px;
+            border-radius: 28px;
+            text-align: center;
+            color: #f2f3f5;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+        }
+        .incoming-call .call-box h2 { font-size: 28px; margin-bottom: 8px; }
+        .incoming-call .call-box p { color: #7a7f89; margin-bottom: 24px; }
+        .incoming-call .call-box .call-actions {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+        }
+        .incoming-call .call-box .call-actions button {
+            border: none;
+            padding: 12px 32px;
+            border-radius: 40px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.15s;
+        }
+        .incoming-call .call-box .call-actions .accept { background: #2ecc71; color: #fff; }
+        .incoming-call .call-box .call-actions .accept:hover { background: #27ae60; }
+        .incoming-call .call-box .call-actions .reject { background: #e74c3c; color: #fff; }
+        .incoming-call .call-box .call-actions .reject:hover { background: #c0392b; }
+
         @media (max-width: 700px) {
             .discard-sidebar { width: 200px; }
             .modal { padding: 24px 20px; margin: 16px; }
+            .incoming-call .call-box { padding: 24px 20px; }
         }
     </style>
 </head>
@@ -296,7 +363,10 @@
                     <div class="chat-header-username" id="headerUsername">@username</div>
                 </div>
             </div>
-            <button class="logout-btn" id="logoutBtn">🚪 Выйти</button>
+            <div>
+                <button class="call-btn" id="callBtn" style="display:none;">📞 Позвонить</button>
+                <button class="logout-btn" id="logoutBtn">🚪 Выйти</button>
+            </div>
         </div>
 
         <div class="discard-chat" id="chatBox">
@@ -306,6 +376,18 @@
         <div class="discard-footer">
             <input type="text" id="msgInput" placeholder="Сообщение..." maxlength="500" disabled>
             <button id="sendBtn" disabled>➤</button>
+        </div>
+    </div>
+</div>
+
+<!-- Модалка входящего звонка -->
+<div class="incoming-call" id="incomingCall">
+    <div class="call-box">
+        <h2>📞 Входящий звонок</h2>
+        <p id="callerName">Неизвестный</p>
+        <div class="call-actions">
+            <button class="accept" id="acceptCallBtn">✅ Принять</button>
+            <button class="reject" id="rejectCallBtn">❌ Отклонить</button>
         </div>
     </div>
 </div>
@@ -328,6 +410,9 @@
     </div>
 </div>
 
+<!-- PeerJS для звонков -->
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
@@ -345,6 +430,7 @@
     firebase.initializeApp(firebaseConfig);
     var db = firebase.database();
 
+    // DOM
     var authPage = document.getElementById('authPage');
     var app = document.getElementById('app');
     var loginMode = document.getElementById('loginMode');
@@ -369,6 +455,12 @@
     var switchToRegister = document.getElementById('switchToRegister');
     var switchToLogin = document.getElementById('switchToLogin');
     var logoutBtn = document.getElementById('logoutBtn');
+    var callBtn = document.getElementById('callBtn');
+    var incomingCall = document.getElementById('incomingCall');
+    var callerName = document.getElementById('callerName');
+    var acceptCallBtn = document.getElementById('acceptCallBtn');
+    var rejectCallBtn = document.getElementById('rejectCallBtn');
+
     var settingsBtn = document.getElementById('settingsBtn');
     var settingsModal = document.getElementById('settingsModal');
     var settingsCloseBtn = document.getElementById('settingsCloseBtn');
@@ -386,6 +478,146 @@
     var chatListener = null;
     var usernameAvailable = false;
     var sessionUid = localStorage.getItem('discard_session_uid');
+
+    // ====== PEERJS (ЗВОНКИ) ======
+    var peer = null;
+    var currentCall = null;
+    var localStream = null;
+    var callReceiverUid = null;
+
+    function initPeer() {
+        if (peer) return;
+        var peerId = 'discard-' + currentUser.uid;
+        peer = new Peer(peerId, {
+            debug: 0,
+            config: {
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' }
+                ]
+            }
+        });
+        peer.on('open', function(id) {
+            console.log('PeerJS подключён:', id);
+            db.ref('users').child(currentUser.uid).update({ peerId: id });
+        });
+        peer.on('call', function(call) {
+            var callerPeerId = call.peer;
+            db.ref('users').orderByChild('peerId').equalTo(callerPeerId).once('value', function(snap) {
+                var data = snap.val();
+                if (!data) return;
+                var callerUid = Object.keys(data)[0];
+                var callerData = data[callerUid];
+                callerName.textContent = callerData.name + ' (@' + callerData.username + ')';
+                incomingCall.classList.add('show');
+                window._pendingCall = call;
+                window._callerUid = callerUid;
+            });
+        });
+        peer.on('error', function(err) {
+            console.error('PeerJS error:', err);
+        });
+    }
+
+    acceptCallBtn.addEventListener('click', function() {
+        var call = window._pendingCall;
+        if (!call) return;
+        navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+            .then(function(stream) {
+                localStream = stream;
+                call.answer(stream);
+                call.on('stream', function(remoteStream) {
+                    var audio = new Audio();
+                    audio.srcObject = remoteStream;
+                    audio.play();
+                    callBtn.textContent = '🔴 Положить трубку';
+                    callBtn.classList.add('in-call');
+                    callReceiverUid = window._callerUid;
+                    console.log('Звонок принят');
+                });
+                call.on('close', function() {
+                    endCall();
+                });
+                incomingCall.classList.remove('show');
+                window._pendingCall = null;
+            })
+            .catch(function(err) {
+                console.error('Ошибка принятия звонка:', err);
+            });
+    });
+
+    rejectCallBtn.addEventListener('click', function() {
+        if (window._pendingCall) {
+            window._pendingCall.close();
+            window._pendingCall = null;
+        }
+        incomingCall.classList.remove('show');
+    });
+
+    function endCall() {
+        if (currentCall) {
+            currentCall.close();
+            currentCall = null;
+        }
+        if (localStream) {
+            localStream.getTracks().forEach(function(t) { t.stop(); });
+            localStream = null;
+        }
+        callBtn.textContent = '📞 Позвонить';
+        callBtn.classList.remove('in-call');
+        callReceiverUid = null;
+        console.log('Звонок завершён');
+    }
+
+    function getPeerIdByUid(uid) {
+        return new Promise(function(resolve) {
+            db.ref('users').child(uid).child('peerId').once('value', function(snap) {
+                resolve(snap.val());
+            });
+        });
+    }
+
+    callBtn.addEventListener('click', function() {
+        if (callBtn.classList.contains('in-call')) {
+            endCall();
+            return;
+        }
+        if (!currentChat) {
+            console.log('Выберите собеседника');
+            return;
+        }
+        navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+            .then(function(stream) {
+                localStream = stream;
+                return getPeerIdByUid(currentChat);
+            })
+            .then(function(receiverPeerId) {
+                if (!receiverPeerId) {
+                    console.log('Собеседник не в сети');
+                    return;
+                }
+                var call = peer.call(receiverPeerId, localStream);
+                currentCall = call;
+                callReceiverUid = currentChat;
+                call.on('stream', function(remoteStream) {
+                    var audio = new Audio();
+                    audio.srcObject = remoteStream;
+                    audio.play();
+                    callBtn.textContent = '🔴 Положить трубку';
+                    callBtn.classList.add('in-call');
+                    console.log('Разговор идёт');
+                });
+                call.on('close', function() {
+                    endCall();
+                });
+                console.log('Звонок...');
+            })
+            .catch(function(err) {
+                console.error('Ошибка звонка:', err);
+            });
+    });
+
+    // ====== ОСТАЛЬНЫЕ ФУНКЦИИ ======
 
     function showError(msg, hint) {
         if (hint === undefined) hint = '';
@@ -570,6 +802,19 @@
             chatListener.off();
             chatListener = null;
         }
+        if (currentCall) {
+            currentCall.close();
+            currentCall = null;
+        }
+        if (localStream) {
+            localStream.getTracks().forEach(function(t) { t.stop(); });
+            localStream = null;
+        }
+        if (peer) {
+            peer.destroy();
+            peer = null;
+        }
+        callBtn.style.display = 'none';
     });
 
     function initChat(uid) {
@@ -587,6 +832,7 @@
                 document.querySelector('.discard-brand span').textContent = 'Дискард (@' + currentUser.username + ')';
                 document.getElementById('sidebarUserName').textContent = currentUser.name;
                 document.getElementById('sidebarUserUsername').textContent = '@' + currentUser.username;
+                initPeer();
                 loadUsers();
                 setupChatListeners();
                 setupSettings();
@@ -674,6 +920,7 @@
             document.getElementById('headerName').textContent = user.name;
             document.getElementById('headerUsername').textContent = '@' + user.username;
             document.getElementById('headerAvatar').textContent = user.name.charAt(0).toUpperCase();
+            callBtn.style.display = 'inline-flex';
         }
 
         document.getElementById('msgInput').disabled = false;
@@ -874,7 +1121,7 @@
         });
     }
 
-    console.log('Дискард запущен');
+    console.log('🔥 Дискард с кнопкой звонка!');
 </script>
 </body>
 </html>
