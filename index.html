@@ -15,7 +15,6 @@
       padding: 16px;
     }
 
-    /* общий контейнер */
     .discard-auth {
       background: #2b2d31;
       border-radius: 28px;
@@ -124,7 +123,6 @@
 
     .hidden { display: none !important; }
 
-    /* после входа — сам чат */
     #app {
       display: none;
       width: 1100px;
@@ -136,7 +134,6 @@
       box-shadow: 0 12px 40px rgba(0,0,0,0.7);
     }
 
-    /* стили чата */
     .discard-sidebar {
       width: 280px;
       background: #1e1f22;
@@ -386,7 +383,6 @@
     <div class="error-msg" id="errorMsg"></div>
     <div class="success-msg" id="successMsg"></div>
 
-    <!-- режим: login или register -->
     <div id="loginMode">
       <label>Электронная почта</label>
       <input type="email" id="loginEmail" placeholder="you@example.com" required>
@@ -415,9 +411,8 @@
       </div>
     </div>
 
-    <!-- скрытое поле для подтверждения почты -->
     <div id="verifyMode" class="hidden">
-      <label>Код подтверждения из письма</label>
+      <label>Введите код подтверждения из письма</label>
       <input type="text" id="verifyCode" placeholder="6-значный код" maxlength="6" required>
       <button class="btn" id="verifyBtn">Подтвердить</button>
       <div class="switch">
@@ -427,7 +422,7 @@
   </div>
 </div>
 
-<!-- САМ ЧАТ (показывается после входа) -->
+<!-- САМ ЧАТ -->
 <div id="app">
   <div class="discard-sidebar">
     <div class="discard-sidebar-header">
@@ -507,8 +502,13 @@
 
   const switchToRegister = document.getElementById('switchToRegister');
   const switchToLogin = document.getElementById('switchToLogin');
-
   const logoutBtn = document.getElementById('logoutBtn');
+
+  let currentUser = null;
+  let currentChat = null;
+  let allUsers = [];
+  let chatListener = null;
+  let verificationInterval = null;
 
   // ----- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ -----
 
@@ -529,7 +529,6 @@
     successMsg.style.display = 'none';
   }
 
-  // переключение между режимами
   function showLogin() {
     loginMode.classList.remove('hidden');
     registerMode.classList.add('hidden');
@@ -553,7 +552,6 @@
 
   // ----- АВТОРИЗАЦИЯ -----
 
-  // Вход
   loginBtn.addEventListener('click', () => {
     const email = loginEmail.value.trim();
     const pass = loginPassword.value.trim();
@@ -562,9 +560,22 @@
     loginBtn.disabled = true;
     loginBtn.textContent = 'Вход...';
     auth.signInWithEmailAndPassword(email, pass)
-      .then(() => {
+      .then((userCred) => {
         loginBtn.disabled = false;
         loginBtn.textContent = 'Войти';
+        if (!userCred.user.emailVerified) {
+          // Если почта не подтверждена — отправляем код повторно
+          userCred.user.sendEmailVerification().then(() => {
+            showVerify();
+            showSuccess('Код подтверждения отправлен на ' + email);
+            window._verifyEmail = email;
+            window._verifyPassword = pass;
+            // Запускаем проверку подтверждения
+            startVerificationCheck();
+          }).catch(err => {
+            showError('Ошибка отправки кода: ' + err.message);
+          });
+        }
       })
       .catch(err => {
         loginBtn.disabled = false;
@@ -573,7 +584,6 @@
       });
   });
 
-  // Регистрация
   registerBtn.addEventListener('click', () => {
     const email = regEmail.value.trim();
     const pass = regPassword.value.trim();
@@ -586,16 +596,16 @@
       .then((userCred) => {
         registerBtn.disabled = false;
         registerBtn.textContent = 'Зарегистрироваться';
-        // Отправка письма с подтверждением
         userCred.user.sendEmailVerification()
           .then(() => {
-            showSuccess('На почту отправлен код подтверждения. Введите его ниже.');
             showVerify();
+            showSuccess('Код подтверждения отправлен на ' + email);
             window._verifyEmail = email;
             window._verifyPassword = pass;
+            startVerificationCheck();
           })
           .catch(err => {
-            showError('Ошибка отправки письма: ' + err.message);
+            showError('Ошибка отправки кода: ' + err.message);
           });
       })
       .catch(err => {
@@ -605,7 +615,30 @@
       });
   });
 
-  // Подтверждение по коду из письма
+  // Проверка подтверждения почты каждые 3 секунды
+  function startVerificationCheck() {
+    if (verificationInterval) clearInterval(verificationInterval);
+    verificationInterval = setInterval(() => {
+      if (auth.currentUser) {
+        auth.currentUser.reload().then(() => {
+          if (auth.currentUser.emailVerified) {
+            clearInterval(verificationInterval);
+            verificationInterval = null;
+            showSuccess('Почта подтверждена! Вход выполнен.');
+            setTimeout(() => {
+              // Автоматически входим
+              auth.signInWithEmailAndPassword(
+                auth.currentUser.email,
+                window._verifyPassword || ''
+              ).catch(() => {});
+            }, 500);
+          }
+        });
+      }
+    }, 3000);
+  }
+
+  // Подтверждение по коду (ручной ввод)
   verifyBtn.addEventListener('click', () => {
     const code = verifyCode.value.trim();
     if (!code) { showError('Введите код из письма'); return; }
@@ -613,29 +646,32 @@
     verifyBtn.disabled = true;
     verifyBtn.textContent = 'Проверка...';
     
-    // Проверяем, подтверждена ли почта
-    auth.currentUser.reload().then(() => {
-      if (auth.currentUser.emailVerified) {
-        showSuccess('Почта подтверждена! Вход выполнен.');
+    if (auth.currentUser) {
+      auth.currentUser.reload().then(() => {
+        if (auth.currentUser.emailVerified) {
+          showSuccess('Почта подтверждена! Вход выполнен.');
+          verifyBtn.disabled = false;
+          verifyBtn.textContent = 'Подтвердить';
+          if (verificationInterval) clearInterval(verificationInterval);
+          auth.signInWithEmailAndPassword(
+            auth.currentUser.email,
+            window._verifyPassword || ''
+          ).catch(() => {});
+        } else {
+          showError('Код неверный или почта ещё не подтверждена. Попробуйте ещё раз.');
+          verifyBtn.disabled = false;
+          verifyBtn.textContent = 'Подтвердить';
+        }
+      }).catch(() => {
+        showError('Ошибка проверки. Попробуйте войти вручную после подтверждения почты.');
         verifyBtn.disabled = false;
         verifyBtn.textContent = 'Подтвердить';
-        // Автоматически входим
-        auth.signInWithEmailAndPassword(
-          auth.currentUser.email,
-          window._verifyPassword || ''
-        ).catch(() => {});
-      } else {
-        // Если не подтверждена — пробуем применить код через applyActionCode
-        // Но Firebase не даёт прямого API для кода из письма, поэтому предлагаем повторить
-        showError('Код неверный или почта ещё не подтверждена. Попробуйте ещё раз или запросите новый код.');
-        verifyBtn.disabled = false;
-        verifyBtn.textContent = 'Подтвердить';
-      }
-    }).catch(() => {
-      showError('Ошибка проверки. Попробуйте войти вручную после подтверждения почты.');
+      });
+    } else {
+      showError('Пользователь не найден. Начните регистрацию заново.');
       verifyBtn.disabled = false;
       verifyBtn.textContent = 'Подтвердить';
-    });
+    }
   });
 
   // Повторная отправка кода
@@ -661,17 +697,19 @@
     showLogin();
   });
 
-  // Выход
   logoutBtn.addEventListener('click', () => {
     auth.signOut().then(() => {
       app.style.display = 'none';
       authPage.style.display = 'block';
       showLogin();
       hideMessages();
-      // чистим слушатели
       if (chatListener) {
         chatListener.off();
         chatListener = null;
+      }
+      if (verificationInterval) {
+        clearInterval(verificationInterval);
+        verificationInterval = null;
       }
     });
   });
@@ -680,23 +718,22 @@
 
   auth.onAuthStateChanged((user) => {
     if (user && user.emailVerified) {
-      // пользователь вошёл и подтвердил почту
       authPage.style.display = 'none';
       app.style.display = 'flex';
       initChat(user.email);
+      if (verificationInterval) {
+        clearInterval(verificationInterval);
+        verificationInterval = null;
+      }
     } else if (user && !user.emailVerified) {
-      // залогинен, но почта не подтверждена
       authPage.style.display = 'block';
       app.style.display = 'none';
       showVerify();
       showSuccess('Подтвердите почту. Код отправлен на ' + user.email);
       window._verifyEmail = user.email;
-      // сохраняем пароль, если он был введён при регистрации
-      if (!window._verifyPassword) {
-        window._verifyPassword = regPassword.value || '';
-      }
+      window._verifyPassword = regPassword.value || '';
+      startVerificationCheck();
     } else {
-      // не залогинен
       authPage.style.display = 'block';
       app.style.display = 'none';
       showLogin();
@@ -704,12 +741,7 @@
     }
   });
 
-  // ----- ЧАТ (ИНИЦИАЛИЗАЦИЯ ПОСЛЕ ВХОДА) -----
-
-  let currentUser = null;
-  let currentChat = null;
-  let allUsers = [];
-  let chatListener = null;
+  // ----- ЧАТ -----
 
   function initChat(email) {
     currentUser = email.split('@')[0] || email;
@@ -853,7 +885,6 @@
       }
     });
 
-    // добавить пользователя в базу
     const usersRef = db.ref('users');
     usersRef.child(currentUser).once('value', (snap) => {
       if (!snap.exists()) {
@@ -866,7 +897,7 @@
     });
   }
 
-  console.log('🔥 Дискард с авторизацией и подтверждением почты');
+  console.log('🔥 Дискард с реальной отправкой кода на почту');
 </script>
 </body>
 </html>
