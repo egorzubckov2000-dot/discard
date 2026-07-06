@@ -332,8 +332,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <script>
-    // ====== КОНФИГ ======
-    const firebaseConfig = {
+    var firebaseConfig = {
         apiKey: "AIzaSyBEaTlUs6XtXnnNbPITo70upMX12lDxKk4",
         authDomain: "discard-mess.firebaseapp.com",
         databaseURL: "https://discard-mess-default-rtdb.firebaseio.com",
@@ -344,64 +343,69 @@
     };
 
     firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+    var db = firebase.database();
 
-    // DOM
-    const authPage = document.getElementById('authPage');
-    const app = document.getElementById('app');
-    const loginMode = document.getElementById('loginMode');
-    const registerMode = document.getElementById('registerMode');
-    const errorMsg = document.getElementById('errorMsg');
-    const errorText = document.getElementById('errorText');
-    const errorHint = document.getElementById('errorHint');
-    const successMsg = document.getElementById('successMsg');
+    var authPage = document.getElementById('authPage');
+    var app = document.getElementById('app');
+    var loginMode = document.getElementById('loginMode');
+    var registerMode = document.getElementById('registerMode');
+    var errorMsg = document.getElementById('errorMsg');
+    var errorText = document.getElementById('errorText');
+    var errorHint = document.getElementById('errorHint');
+    var successMsg = document.getElementById('successMsg');
 
-    const loginUsername = document.getElementById('loginUsername');
-    const loginPassword = document.getElementById('loginPassword');
-    const loginBtn = document.getElementById('loginBtn');
+    var loginUsername = document.getElementById('loginUsername');
+    var loginPassword = document.getElementById('loginPassword');
+    var loginBtn = document.getElementById('loginBtn');
 
-    const regUsername = document.getElementById('regUsername');
-    const regName = document.getElementById('regName');
-    const regEmail = document.getElementById('regEmail');
-    const regPassword = document.getElementById('regPassword');
-    const regDescription = document.getElementById('regDescription');
-    const registerBtn = document.getElementById('registerBtn');
-    const usernameHint = document.getElementById('usernameHint');
+    var regUsername = document.getElementById('regUsername');
+    var regName = document.getElementById('regName');
+    var regEmail = document.getElementById('regEmail');
+    var regPassword = document.getElementById('regPassword');
+    var regDescription = document.getElementById('regDescription');
+    var registerBtn = document.getElementById('registerBtn');
+    var usernameHint = document.getElementById('usernameHint');
 
-    const switchToRegister = document.getElementById('switchToRegister');
-    const switchToLogin = document.getElementById('switchToLogin');
-    const logoutBtn = document.getElementById('logoutBtn');
-    const settingsBtn = document.getElementById('settingsBtn');
-    const settingsModal = document.getElementById('settingsModal');
-    const settingsCloseBtn = document.getElementById('settingsCloseBtn');
-    const settingsSaveBtn = document.getElementById('settingsSaveBtn');
-    const settingsName = document.getElementById('settingsName');
-    const settingsUsername = document.getElementById('settingsUsername');
-    const settingsDescription = document.getElementById('settingsDescription');
-    const settingsEmail = document.getElementById('settingsEmail');
-    const settingsSaved = document.getElementById('settingsSaved');
-    const settingsError = document.getElementById('settingsError');
+    var switchToRegister = document.getElementById('switchToRegister');
+    var switchToLogin = document.getElementById('switchToLogin');
+    var logoutBtn = document.getElementById('logoutBtn');
+    var settingsBtn = document.getElementById('settingsBtn');
+    var settingsModal = document.getElementById('settingsModal');
+    var settingsCloseBtn = document.getElementById('settingsCloseBtn');
+    var settingsSaveBtn = document.getElementById('settingsSaveBtn');
+    var settingsName = document.getElementById('settingsName');
+    var settingsUsername = document.getElementById('settingsUsername');
+    var settingsDescription = document.getElementById('settingsDescription');
+    var settingsEmail = document.getElementById('settingsEmail');
+    var settingsSaved = document.getElementById('settingsSaved');
+    var settingsError = document.getElementById('settingsError');
 
-    let currentUser = null;
-    let currentChat = null;
-    let allUsers = [];
-    let chatListener = null;
-    let usernameAvailable = false;
-    let sessionUid = localStorage.getItem('discard_session_uid');
+    var currentUser = null;
+    var currentChat = null;
+    var allUsers = [];
+    var chatListener = null;
+    var usernameAvailable = false;
+    var sessionUid = localStorage.getItem('discard_session_uid');
 
-    // ----- ФУНКЦИИ -----
-    function showError(msg, hint = '') {
+    function showError(msg, hint) {
+        if (hint === undefined) hint = '';
         errorMsg.style.display = 'block';
         errorText.textContent = msg;
-        if (hint) { errorHint.innerHTML = hint; errorHint.style.display = 'block'; }
-        else { errorHint.style.display = 'none'; }
+        if (hint) {
+            errorHint.innerHTML = hint;
+            errorHint.style.display = 'block';
+        } else {
+            errorHint.style.display = 'none';
+        }
         successMsg.style.display = 'none';
     }
+
     function showSuccess(msg) {
         successMsg.style.display = 'block';
         successMsg.textContent = msg;
         errorMsg.style.display = 'none';
     }
+
     function hideMessages() {
         errorMsg.style.display = 'none';
         successMsg.style.display = 'none';
@@ -412,15 +416,15 @@
         registerMode.classList.add('hidden');
         hideMessages();
     }
+
     function showRegister() {
         loginMode.classList.add('hidden');
         registerMode.classList.remove('hidden');
         hideMessages();
     }
 
-    // ----- ПРОВЕРКА ЮЗЕРНЕЙМА -----
-    regUsername.addEventListener('input', () => {
-        const username = regUsername.value.trim();
+    regUsername.addEventListener('input', function() {
+        var username = regUsername.value.trim();
         if (!username) {
             usernameHint.textContent = 'Только латиница, цифры и _';
             usernameHint.className = 'username-hint';
@@ -428,18 +432,18 @@
             return;
         }
         if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-            usernameHint.textContent = '❌ Только латиница, цифры и _';
+            usernameHint.textContent = 'Только латиница, цифры и _';
             usernameHint.className = 'username-hint taken';
             usernameAvailable = false;
             return;
         }
-        db.ref('users').orderByChild('username').equalTo(username).once('value', (snap) => {
+        db.ref('users').orderByChild('username').equalTo(username).once('value', function(snap) {
             if (snap.exists()) {
-                usernameHint.textContent = '❌ Юзернейм уже занят';
+                usernameHint.textContent = 'Юзернейм уже занят';
                 usernameHint.className = 'username-hint taken';
                 usernameAvailable = false;
             } else {
-                usernameHint.textContent = '✅ Доступен';
+                usernameHint.textContent = 'Доступен';
                 usernameHint.className = 'username-hint available';
                 usernameAvailable = true;
             }
@@ -454,7 +458,7 @@
     }
 
     if (sessionUid) {
-        db.ref('users').child(sessionUid).once('value', (snap) => {
+        db.ref('users').child(sessionUid).once('value', function(snap) {
             if (snap.exists()) {
                 loginUser(sessionUid);
             } else {
@@ -464,7 +468,7 @@
                 app.style.display = 'none';
                 showLogin();
             }
-        }).catch(() => {
+        }).catch(function() {
             localStorage.removeItem('discard_session_uid');
             sessionUid = null;
             authPage.style.display = 'block';
@@ -473,49 +477,50 @@
         });
     }
 
-    // ----- ВХОД -----
-    loginBtn.addEventListener('click', () => {
-        const username = loginUsername.value.trim();
-        const pass = loginPassword.value.trim();
-        if (!username || !pass) { showError('Заполните все поля'); return; }
+    loginBtn.addEventListener('click', function() {
+        var username = loginUsername.value.trim();
+        var pass = loginPassword.value.trim();
+        if (!username || !pass) {
+            showError('Заполните все поля');
+            return;
+        }
         hideMessages();
         loginBtn.disabled = true;
         loginBtn.textContent = 'Вход...';
 
-        db.ref('users').orderByChild('username').equalTo(username).once('value', (snap) => {
-            const data = snap.val();
+        db.ref('users').orderByChild('username').equalTo(username).once('value', function(snap) {
+            var data = snap.val();
             if (!data) {
                 loginBtn.disabled = false;
                 loginBtn.textContent = 'Войти';
-                showError('❌ Пользователь с таким юзернеймом не найден');
+                showError('Пользователь с таким юзернеймом не найден');
                 return;
             }
-            const uid = Object.keys(data)[0];
-            const userData = data[uid];
+            var uid = Object.keys(data)[0];
+            var userData = data[uid];
             if (userData.password === pass) {
                 loginBtn.disabled = false;
                 loginBtn.textContent = 'Войти';
                 loginUser(uid);
-                showSuccess('✅ Добро пожаловать, ' + userData.name + '!');
+                showSuccess('Добро пожаловать, ' + userData.name + '!');
             } else {
                 loginBtn.disabled = false;
                 loginBtn.textContent = 'Войти';
-                showError('❌ Неверный пароль');
+                showError('Неверный пароль');
             }
-        }).catch(err => {
+        }).catch(function(err) {
             loginBtn.disabled = false;
             loginBtn.textContent = 'Войти';
-            showError('❌ Ошибка: ' + err.message);
+            showError('Ошибка: ' + err.message);
         });
     });
 
-    // ----- РЕГИСТРАЦИЯ -----
-    registerBtn.addEventListener('click', () => {
-        const username = regUsername.value.trim();
-        const name = regName.value.trim();
-        const pass = regPassword.value.trim();
-        const email = regEmail.value.trim();
-        const description = regDescription.value.trim();
+    registerBtn.addEventListener('click', function() {
+        var username = regUsername.value.trim();
+        var name = regName.value.trim();
+        var pass = regPassword.value.trim();
+        var email = regEmail.value.trim();
+        var description = regDescription.value.trim();
 
         if (!username) { showError('Введите юзернейм'); return; }
         if (!/^[a-zA-Z0-9_]+$/.test(username)) { showError('Юзернейм: только латиница, цифры и _'); return; }
@@ -528,9 +533,9 @@
         registerBtn.disabled = true;
         registerBtn.textContent = 'Регистрация...';
 
-        const uid = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
-        const userRef = db.ref('users').child(uid);
-        const userData = {
+        var uid = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+        var userRef = db.ref('users').child(uid);
+        var userData = {
             username: username,
             name: name,
             password: pass,
@@ -539,38 +544,38 @@
         };
         if (email) userData.email = email;
 
-        userRef.set(userData).then(() => {
+        userRef.set(userData).then(function() {
             registerBtn.disabled = false;
             registerBtn.textContent = 'Зарегистрироваться';
-            showSuccess('✅ Регистрация успешна!');
+            showSuccess('Регистрация успешна!');
             loginUser(uid);
-        }).catch(err => {
+        }).catch(function(err) {
             registerBtn.disabled = false;
             registerBtn.textContent = 'Зарегистрироваться';
-            showError('❌ Ошибка сохранения: ' + err.message);
+            showError('Ошибка сохранения: ' + err.message);
         });
     });
 
-    // ----- ПЕРЕКЛЮЧЕНИЕ -----
     switchToRegister.addEventListener('click', showRegister);
     switchToLogin.addEventListener('click', showLogin);
 
-    // ----- ВЫХОД -----
-    logoutBtn.addEventListener('click', () => {
+    logoutBtn.addEventListener('click', function() {
         localStorage.removeItem('discard_session_uid');
         sessionUid = null;
         app.style.display = 'none';
         authPage.style.display = 'block';
         showLogin();
         hideMessages();
-        if (chatListener) { chatListener.off(); chatListener = null; }
+        if (chatListener) {
+            chatListener.off();
+            chatListener = null;
+        }
     });
 
-    // ====== ЧАТ ======
     function initChat(uid) {
-        const userRef = db.ref('users').child(uid);
-        userRef.once('value', (snap) => {
-            const data = snap.val();
+        var userRef = db.ref('users').child(uid);
+        userRef.once('value', function(snap) {
+            var data = snap.val();
             if (data) {
                 currentUser = {
                     uid: uid,
@@ -590,55 +595,81 @@
     }
 
     function loadUsers() {
-        const usersRef = db.ref('users');
-        usersRef.on('value', (snap) => {
-            const data = snap.val();
-            if (!data) { allUsers = []; renderChatList(); return; }
-            allUsers = Object.keys(data)
-                .filter(uid => uid !== currentUser.uid)
-                .map(uid => ({ uid, ...data[uid] }));
+        var usersRef = db.ref('users');
+        usersRef.on('value', function(snap) {
+            var data = snap.val();
+            if (!data) {
+                allUsers = [];
+                renderChatList();
+                return;
+            }
+            var keys = Object.keys(data);
+            var result = [];
+            for (var i = 0; i < keys.length; i++) {
+                var uid = keys[i];
+                if (uid !== currentUser.uid) {
+                    var userData = data[uid];
+                    userData.uid = uid;
+                    result.push(userData);
+                }
+            }
+            allUsers = result;
             renderChatList();
         });
     }
 
-    function renderChatList(filter = '') {
-        const chatList = document.getElementById('chatList');
+    function renderChatList(filter) {
+        if (filter === undefined) filter = '';
+        var chatList = document.getElementById('chatList');
         chatList.innerHTML = '';
-        let list = allUsers;
+        var list = allUsers;
         if (filter.trim() !== '') {
-            const f = filter.toLowerCase().trim();
-            list = list.filter(user =>
-                user.name.toLowerCase().includes(f) ||
-                user.username.toLowerCase().includes(f)
-            );
+            var f = filter.toLowerCase().trim();
+            var filtered = [];
+            for (var i = 0; i < list.length; i++) {
+                var user = list[i];
+                if (user.name.toLowerCase().includes(f) || user.username.toLowerCase().includes(f)) {
+                    filtered.push(user);
+                }
+            }
+            list = filtered;
         }
         if (list.length === 0) {
             chatList.innerHTML = '<div class="empty-state" style="color:#6a6f78; padding:20px; text-align:center;">Никого не найдено</div>';
             return;
         }
-        list.forEach(user => {
-            const div = document.createElement('div');
-            div.className = `chat-item ${currentChat === user.uid ? 'active' : ''}`;
-            div.innerHTML = `
-                <div class="avatar">${user.name.charAt(0).toUpperCase()}</div>
-                <div class="chat-info">
-                    <div class="chat-name">${user.name}</div>
-                    <div class="chat-username">@${user.username}</div>
-                    <div class="chat-desc">${user.description || 'Нет описания'}</div>
-                </div>
-                <span class="chat-time">●</span>
-            `;
-            div.addEventListener('click', () => openChat(user.uid));
+        for (var j = 0; j < list.length; j++) {
+            var user = list[j];
+            var div = document.createElement('div');
+            var isActive = (currentChat === user.uid) ? 'active' : '';
+            div.className = 'chat-item ' + isActive;
+            div.innerHTML = '<div class="avatar">' + user.name.charAt(0).toUpperCase() + '</div>' +
+                '<div class="chat-info">' +
+                '<div class="chat-name">' + user.name + '</div>' +
+                '<div class="chat-username">@' + user.username + '</div>' +
+                '<div class="chat-desc">' + (user.description || 'Нет описания') + '</div>' +
+                '</div>' +
+                '<span class="chat-time">●</span>';
+            div.addEventListener('click', function(u) {
+                return function() { openChat(u.uid); };
+            }(user));
             chatList.appendChild(div);
-        });
+        }
     }
 
     function openChat(uid) {
         if (!uid || uid === currentUser.uid) return;
         currentChat = uid;
-        renderChatList(document.getElementById('searchInput').value);
+        var searchInput = document.getElementById('searchInput');
+        renderChatList(searchInput.value);
 
-        const user = allUsers.find(u => u.uid === uid);
+        var user = null;
+        for (var i = 0; i < allUsers.length; i++) {
+            if (allUsers[i].uid === uid) {
+                user = allUsers[i];
+                break;
+            }
+        }
         if (user) {
             document.getElementById('headerName').textContent = user.name;
             document.getElementById('headerUsername').textContent = '@' + user.username;
@@ -653,28 +684,37 @@
     }
 
     function loadMessages(uid) {
-        const chatBox = document.getElementById('chatBox');
+        var chatBox = document.getElementById('chatBox');
         chatBox.innerHTML = '';
-        const chatRef = db.ref('messages').child(currentUser.uid).child(uid);
-        chatRef.orderByChild('time').limitToLast(50).once('value', (snap) => {
-            const data = snap.val();
+        var chatRef = db.ref('messages').child(currentUser.uid).child(uid);
+        chatRef.orderByChild('time').limitToLast(50).once('value', function(snap) {
+            var data = snap.val();
             if (!data) {
                 chatBox.innerHTML = '<div class="empty-state">💬 Начните диалог</div>';
                 return;
             }
-            const sorted = Object.values(data).sort((a, b) => a.time - b.time);
-            sorted.forEach(msg => renderMessage(msg));
+            var keys = Object.keys(data);
+            var messages = [];
+            for (var i = 0; i < keys.length; i++) {
+                messages.push(data[keys[i]]);
+            }
+            messages.sort(function(a, b) { return a.time - b.time; });
+            for (var j = 0; j < messages.length; j++) {
+                renderMessage(messages[j]);
+            }
             chatBox.scrollTop = chatBox.scrollHeight;
         });
     }
 
     function subscribeToMessages(uid) {
-        if (chatListener) { chatListener.off(); }
-        const chatRef = db.ref('messages').child(currentUser.uid).child(uid);
-        chatListener = chatRef.orderByChild('time').limitToLast(1).on('child_added', (snapshot) => {
-            const data = snapshot.val();
+        if (chatListener) {
+            chatListener.off();
+        }
+        var chatRef = db.ref('messages').child(currentUser.uid).child(uid);
+        chatListener = chatRef.orderByChild('time').limitToLast(1).on('child_added', function(snapshot) {
+            var data = snapshot.val();
             if (!data) return;
-            const existing = document.getElementById('chatBox').querySelector(`[data-id="${snapshot.key}"]`);
+            var existing = document.getElementById('chatBox').querySelector('[data-id="' + snapshot.key + '"]');
             if (!existing) {
                 renderMessage(data);
                 document.getElementById('chatBox').scrollTop = document.getElementById('chatBox').scrollHeight;
@@ -683,27 +723,32 @@
     }
 
     function renderMessage(data) {
-        const isSelf = data.sender === currentUser.uid;
-        const div = document.createElement('div');
-        div.className = `message ${isSelf ? 'self' : 'other'}`;
+        var isSelf = data.sender === currentUser.uid;
+        var div = document.createElement('div');
+        div.className = 'message ' + (isSelf ? 'self' : 'other');
         div.setAttribute('data-id', data.id || Date.now());
 
-        const userSpan = document.createElement('div');
+        var userSpan = document.createElement('div');
         userSpan.className = 'msg-user';
-        let senderName = 'Аноним';
-        if (isSelf) senderName = currentUser.name;
-        else {
-            const sender = allUsers.find(u => u.uid === data.sender);
-            if (sender) senderName = sender.name;
+        var senderName = 'Аноним';
+        if (isSelf) {
+            senderName = currentUser.name;
+        } else {
+            for (var i = 0; i < allUsers.length; i++) {
+                if (allUsers[i].uid === data.sender) {
+                    senderName = allUsers[i].name;
+                    break;
+                }
+            }
         }
         userSpan.innerText = senderName;
 
-        const textSpan = document.createElement('div');
+        var textSpan = document.createElement('div');
         textSpan.innerText = data.text || '';
 
-        const timeSpan = document.createElement('div');
+        var timeSpan = document.createElement('div');
         timeSpan.className = 'msg-time';
-        const d = new Date(data.time);
+        var d = new Date(data.time);
         timeSpan.innerText = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
         div.appendChild(userSpan);
@@ -715,20 +760,20 @@
 
     function sendMessage() {
         if (!currentChat) return;
-        const input = document.getElementById('msgInput');
-        const text = input.value.trim();
+        var input = document.getElementById('msgInput');
+        var text = input.value.trim();
         if (!text) return;
 
-        const newMsg = {
+        var newMsg = {
             sender: currentUser.uid,
             text: text,
             time: Date.now(),
             id: Date.now() + '_' + Math.random().toString(36).substr(2, 4)
         };
 
-        const chatRef1 = db.ref('messages').child(currentChat).child(currentUser.uid);
+        var chatRef1 = db.ref('messages').child(currentChat).child(currentUser.uid);
         chatRef1.push().set(newMsg);
-        const chatRef2 = db.ref('messages').child(currentUser.uid).child(currentChat);
+        var chatRef2 = db.ref('messages').child(currentUser.uid).child(currentChat);
         chatRef2.push().set(newMsg);
 
         input.value = '';
@@ -736,18 +781,20 @@
     }
 
     function setupChatListeners() {
-        document.getElementById('searchInput').addEventListener('input', (e) => {
+        document.getElementById('searchInput').addEventListener('input', function(e) {
             renderChatList(e.target.value);
         });
         document.getElementById('sendBtn').addEventListener('click', sendMessage);
-        document.getElementById('msgInput').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') { e.preventDefault(); sendMessage(); }
+        document.getElementById('msgInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                sendMessage();
+            }
         });
     }
 
-    // ----- НАСТРОЙКИ -----
     function setupSettings() {
-        settingsBtn.addEventListener('click', () => {
+        settingsBtn.addEventListener('click', function() {
             settingsName.value = currentUser.name || '';
             settingsUsername.value = '@' + (currentUser.username || '');
             settingsDescription.value = currentUser.description || '';
@@ -757,33 +804,33 @@
             settingsError.style.display = 'none';
         });
 
-        settingsCloseBtn.addEventListener('click', () => {
+        settingsCloseBtn.addEventListener('click', function() {
             settingsModal.classList.remove('show');
         });
 
-        settingsModal.addEventListener('click', (e) => {
+        settingsModal.addEventListener('click', function(e) {
             if (e.target === settingsModal) settingsModal.classList.remove('show');
         });
 
-        settingsSaveBtn.addEventListener('click', () => {
-            const newName = settingsName.value.trim();
-            const newDescription = settingsDescription.value.trim();
-            const newEmail = settingsEmail.value.trim();
+        settingsSaveBtn.addEventListener('click', function() {
+            var newName = settingsName.value.trim();
+            var newDescription = settingsDescription.value.trim();
+            var newEmail = settingsEmail.value.trim();
 
             if (!newName) {
-                settingsError.textContent = '❌ Имя не может быть пустым';
+                settingsError.textContent = 'Имя не может быть пустым';
                 settingsError.style.display = 'block';
                 settingsSaved.style.display = 'none';
                 return;
             }
 
-            const updates = {};
+            var updates = {};
             if (newName !== currentUser.name) updates.name = newName;
             if (newDescription !== currentUser.description) updates.description = newDescription;
             if (newEmail !== currentUser.email) updates.email = newEmail;
 
             if (Object.keys(updates).length === 0) {
-                settingsError.textContent = '❌ Нет изменений для сохранения';
+                settingsError.textContent = 'Нет изменений для сохранения';
                 settingsError.style.display = 'block';
                 settingsSaved.style.display = 'none';
                 return;
@@ -793,34 +840,41 @@
             settingsSaveBtn.textContent = 'Сохранение...';
 
             db.ref('users').child(currentUser.uid).update(updates)
-                .then(() => {
-                    Object.assign(currentUser, updates);
+                .then(function() {
+                    if (updates.name) currentUser.name = updates.name;
+                    if (updates.description) currentUser.description = updates.description;
+                    if (updates.email) currentUser.email = updates.email;
+                    
                     document.getElementById('sidebarUserName').textContent = currentUser.name;
                     document.getElementById('sidebarUserUsername').textContent = '@' + currentUser.username;
                     if (currentChat) {
-                        const user = allUsers.find(u => u.uid === currentChat);
-                        if (user) {
-                            document.getElementById('headerName').textContent = user.name;
-                            document.getElementById('headerUsername').textContent = '@' + user.username;
+                        for (var i = 0; i < allUsers.length; i++) {
+                            if (allUsers[i].uid === currentChat) {
+                                document.getElementById('headerName').textContent = allUsers[i].name;
+                                document.getElementById('headerUsername').textContent = '@' + allUsers[i].username;
+                                break;
+                            }
                         }
                     }
                     settingsSaved.style.display = 'block';
                     settingsError.style.display = 'none';
                     settingsSaveBtn.disabled = false;
-                    settingsSaveBtn.textContent = '💾 Сохранить';
-                    setTimeout(() => { settingsSaved.style.display = 'none'; }, 3000);
+                    settingsSaveBtn.textContent = 'Сохранить';
+                    setTimeout(function() {
+                        settingsSaved.style.display = 'none';
+                    }, 3000);
                 })
-                .catch(err => {
-                    settingsError.textContent = '❌ ' + err.message;
+                .catch(function(err) {
+                    settingsError.textContent = 'Ошибка: ' + err.message;
                     settingsError.style.display = 'block';
                     settingsSaved.style.display = 'none';
                     settingsSaveBtn.disabled = false;
-                    settingsSaveBtn.textContent = '💾 Сохранить';
+                    settingsSaveBtn.textContent = 'Сохранить';
                 });
         });
     }
 
-    console.log('🔥 Дискард — работает!');
+    console.log('Дискард запущен');
 </script>
 </body>
 </html>
