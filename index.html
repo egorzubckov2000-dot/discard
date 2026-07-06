@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Дискард — звонок сам себе</title>
+    <title>Дискард — звонок себе</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📡</text></svg>">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, sans-serif; }
         body { background: #1e1f22; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 16px; }
+
         .discard-auth {
             background: #2b2d31;
             border-radius: 28px;
@@ -58,6 +59,7 @@
             display: none; width: 1100px; max-width: 100%; height: 750px;
             background: #2b2d31; border-radius: 28px; overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,0.7);
         }
+
         .discard-sidebar {
             width: 280px; background: #1e1f22; display: flex; flex-direction: column;
             border-right: 1px solid #3a3c42; flex-shrink: 0;
@@ -80,6 +82,7 @@
         }
         .discard-search::placeholder { color: #7a7f89; }
         .discard-search:focus { background: #404249; box-shadow: 0 0 0 2px #5865f2; }
+
         .chat-list {
             flex: 1; overflow-y: auto; padding: 10px 8px;
         }
@@ -101,6 +104,7 @@
         .chat-item .chat-username { font-size: 12px; color: #7a7f89; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .chat-item .chat-desc { font-size: 12px; color: #7a7f89; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .chat-item .chat-time { font-size: 11px; color: #7a7f89; }
+
         .discard-sidebar-footer {
             padding: 12px 14px; border-top: 1px solid #3a3c42;
             display: flex; align-items: center; gap: 12px;
@@ -115,6 +119,7 @@
             display: flex; align-items: center; justify-content: center;
         }
         .discard-sidebar-footer .settings-btn:hover { background: #4e5058; color: #fff; }
+
         .discard-chat-window { flex: 1; display: flex; flex-direction: column; background: #2b2d31; }
         .chat-header {
             padding: 14px 20px; border-bottom: 1px solid #3a3c42; color: #f2f3f5;
@@ -152,6 +157,7 @@
             padding: 6px 14px; border-radius: 20px; font-size: 13px; cursor: pointer; transition: 0.2s;
         }
         .chat-header .logout-btn:hover { background: #4e5058; color: #fff; }
+
         .discard-chat {
             flex: 1; overflow-y: auto; padding: 20px 20px 12px;
             display: flex; flex-direction: column; gap: 6px; background: #2b2d31;
@@ -170,6 +176,7 @@
         .message.self .msg-user { color: #c8ccff; }
         .message .msg-time { font-size: 10px; color: #949ba4; margin-top: 4px; align-self: flex-end; }
         .message.self .msg-time { color: #b9bdff; }
+
         .discard-footer {
             background: #1e1f22; padding: 12px 18px 18px; border-top: 1px solid #3a3c42;
             display: flex; gap: 12px; align-items: center;
@@ -391,7 +398,7 @@
     </div>
 </div>
 
-<!-- Модалка входящего звонка -->
+<!-- Модалка входящего звонка (будет появляться, но автоматически закрываться) -->
 <div class="incoming-call" id="incomingCall">
     <div class="call-box">
         <h2>📞 Входящий звонок</h2>
@@ -403,7 +410,6 @@
     </div>
 </div>
 
-<!-- Модалка настроек -->
 <div class="modal-overlay" id="settingsModal">
     <div class="modal">
         <h2><span class="icon">⚙️</span> Настройки</h2>
@@ -537,7 +543,7 @@
         ]
     };
 
-    // ====== ФУНКЦИИ ЗВОНКОВ (БЕЗ ПРОВЕРКИ НА СЕБЯ) ======
+    // ====== ФУНКЦИИ ЗВОНКОВ ======
     function startCall() {
         if (!currentChat) {
             audioStatus.textContent = '❌ Выберите собеседника';
@@ -551,19 +557,10 @@
         audioStatus.textContent = '📞 Идёт вызов...';
         console.log('📞 ЗВОНОК: Начинаем звонок для', currentChat);
         
-        // Если звоним себе — сразу показываем модалку
-        if (currentChat === currentUser.uid) {
-            console.log('📞 ЗВОНОК: Звоним себе! Автоматический приём...');
-            setTimeout(function() {
-                incomingCall.classList.add('show');
-                callerName.textContent = currentUser.name + ' (это вы!)';
-                // Автоматически принимаем через 1 секунду
-                setTimeout(function() {
-                    if (incomingCall.classList.contains('show')) {
-                        acceptCallBtn.click();
-                    }
-                }, 1000);
-            }, 500);
+        // ЕСЛИ ЗВОНИМ СЕБЕ — ЗАПУСКАЕМ СРАЗУ
+        var isSelfCall = (currentChat === currentUser.uid);
+        if (isSelfCall) {
+            console.log('📞 ЗВОНОК: Звоним себе! Запускаем сразу');
         }
 
         navigator.mediaDevices.getUserMedia({ audio: true, video: false })
@@ -580,30 +577,44 @@
             .then(function() {
                 console.log('✅ ЗВОНОК: Данные отправлены в Firebase');
                 audioStatus.textContent = '📞 Ожидаем ответа...';
-                var answerRef = db.ref('calls').child(currentChat).child('answer');
-                answerRef.on('value', function(snap) {
-                    var data = snap.val();
-                    console.log('📞 ЗВОНОК: Получен ответ:', data);
-                    if (data === 'accept') {
-                        answerRef.off();
+                
+                if (isSelfCall) {
+                    // ЗВОНИМ СЕБЕ: сразу принимаем
+                    setTimeout(function() {
+                        console.log('📞 ЗВОНОК: Автоматический приём (звонок себе)');
                         audioStatus.textContent = '🔊 Звонок принят!';
-                        console.log('✅ ЗВОНОК: Собеседник принял');
+                        // Имитируем ответ "accept"
+                        db.ref('calls').child(currentChat).child('answer').set('accept');
+                        // Запускаем WebRTC
                         startPeerConnection(true);
-                    } else if (data === 'reject') {
+                    }, 500);
+                } else {
+                    // Обычный звонок — ждём ответа
+                    var answerRef = db.ref('calls').child(currentChat).child('answer');
+                    answerRef.on('value', function(snap) {
+                        var data = snap.val();
+                        console.log('📞 ЗВОНОК: Получен ответ:', data);
+                        if (data === 'accept') {
+                            answerRef.off();
+                            audioStatus.textContent = '🔊 Звонок принят!';
+                            console.log('✅ ЗВОНОК: Собеседник принял');
+                            startPeerConnection(true);
+                        } else if (data === 'reject') {
+                            answerRef.off();
+                            audioStatus.textContent = '❌ Звонок отклонён';
+                            console.log('❌ ЗВОНОК: Собеседник отклонил');
+                            endCall();
+                        }
+                    });
+                    setTimeout(function() {
                         answerRef.off();
-                        audioStatus.textContent = '❌ Звонок отклонён';
-                        console.log('❌ ЗВОНОК: Собеседник отклонил');
-                        endCall();
-                    }
-                });
-                setTimeout(function() {
-                    answerRef.off();
-                    if (!isInCall) {
-                        audioStatus.textContent = '⏰ Звонок не отвечен';
-                        console.log('⏰ ЗВОНОК: Таймаут');
-                        endCall();
-                    }
-                }, 30000);
+                        if (!isInCall) {
+                            audioStatus.textContent = '⏰ Звонок не отвечен';
+                            console.log('⏰ ЗВОНОК: Таймаут');
+                            endCall();
+                        }
+                    }, 30000);
+                }
             })
             .catch(function(err) {
                 audioStatus.textContent = '❌ Ошибка: ' + err.message;
@@ -738,7 +749,7 @@
 
     callBtn.addEventListener('click', startCall);
 
-    // ====== СЛУШАЕМ ВХОДЯЩИЕ ЗВОНКИ (БЕЗ ПРОВЕРКИ НА СЕБЯ) ======
+    // ====== СЛУШАЕМ ВХОДЯЩИЕ ЗВОНКИ ======
     function listenForCalls() {
         if (!currentUser) {
             console.warn('⚠️ ЗВОНОК: Нет пользователя');
@@ -752,11 +763,7 @@
             var callerUid = snap.key;
             console.log('📞 ЗВОНОК: Новый звонок от', callerUid, data.fromName);
             
-            // Больше не игнорируем звонки от себя!
-            // if (callerUid === currentUser.uid) return;
-            // if (data.from === currentUser.uid) return;
-            
-            console.log('📞 ЗВОНОК: Показываем модалку');
+            // Показываем модалку для всех, включая себя
             incomingCall.classList.add('show');
             callerName.textContent = data.fromName || 'Неизвестный';
             window._incomingCallData = {
@@ -1166,7 +1173,7 @@
     }
 
     function openChat(uid) {
-        if (!uid || uid === currentUser.uid) return;
+        if (!uid) return;
         currentChat = uid;
         var searchInput = document.getElementById('searchInput');
         renderChatList(searchInput.value);
