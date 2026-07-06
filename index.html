@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Дискард — чат</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, sans-serif; }
         body { background: #1e1f22; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 16px; }
 
         .discard-auth {
@@ -228,7 +228,6 @@
 </head>
 <body>
 
-<!-- СТРАНИЦА ВХОДА -->
 <div class="discard-auth" id="authPage">
     <h1><span class="icon">📡</span> Дискард</h1>
     <div class="auth-form" id="authForm">
@@ -236,8 +235,8 @@
         <div class="success-msg" id="successMsg"></div>
 
         <div id="loginMode">
-            <label>Электронная почта</label>
-            <input type="email" id="loginEmail" placeholder="you@example.com" required>
+            <label>Юзернейм</label>
+            <input type="text" id="loginUsername" placeholder="alex2024" required>
             <label>Пароль</label>
             <input type="password" id="loginPassword" placeholder="••••••••" required>
             <button class="btn" id="loginBtn">Войти</button>
@@ -252,11 +251,11 @@
             <label>Имя <span class="required">*</span> <span style="font-weight:400;color:#7a7f89;font-size:12px;">(может совпадать)</span></label>
             <input type="text" id="regName" placeholder="Алексей" required>
 
-            <label>Электронная почта <span class="required">*</span></label>
-            <input type="email" id="regEmail" placeholder="you@example.com" required>
-
             <label>Пароль <span class="required">*</span> (минимум 6 символов)</label>
             <input type="password" id="regPassword" placeholder="••••••••" required>
+
+            <label>Электронная почта <span class="optional">(необязательно)</span></label>
+            <input type="email" id="regEmail" placeholder="you@example.com">
 
             <label>Описание <span class="optional">(необязательно)</span></label>
             <textarea id="regDescription" placeholder="Расскажите о себе..."></textarea>
@@ -264,19 +263,9 @@
             <button class="btn" id="registerBtn">Зарегистрироваться</button>
             <div class="switch">Уже есть аккаунт? <a id="switchToLogin">Войти</a></div>
         </div>
-
-        <div id="verifyMode" class="hidden">
-            <label>Введите код подтверждения из письма</label>
-            <input type="text" id="verifyCode" placeholder="6-значный код" maxlength="6" required>
-            <button class="btn" id="verifyBtn">Подтвердить</button>
-            <div class="switch">
-                <a id="resendCode">Отправить код повторно</a>
-            </div>
-        </div>
     </div>
 </div>
 
-<!-- ОСНОВНОЙ ЧАТ -->
 <div id="app">
     <div class="discard-sidebar">
         <div class="discard-sidebar-header">
@@ -321,7 +310,6 @@
     </div>
 </div>
 
-<!-- МОДАЛКА НАСТРОЕК -->
 <div class="modal-overlay" id="settingsModal">
     <div class="modal">
         <h2><span class="icon">⚙️</span> Настройки</h2>
@@ -340,13 +328,10 @@
     </div>
 </div>
 
-<!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <script>
-    // ====== КОНФИГ ======
     const firebaseConfig = {
         apiKey: "AIzaSyBEaTlUs6XtXnnNbPITo70upMX12lDxKk4",
         authDomain: "discard-mess.firebaseapp.com",
@@ -356,24 +341,20 @@
         messagingSenderId: "343493809803",
         appId: "1:343493809803:web:b2dc5d99fad37fa39ce68e"
     };
-    // =====================
 
     firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
     const db = firebase.database();
 
-    // DOM
     const authPage = document.getElementById('authPage');
     const app = document.getElementById('app');
     const loginMode = document.getElementById('loginMode');
     const registerMode = document.getElementById('registerMode');
-    const verifyMode = document.getElementById('verifyMode');
     const errorMsg = document.getElementById('errorMsg');
     const errorText = document.getElementById('errorText');
     const errorHint = document.getElementById('errorHint');
     const successMsg = document.getElementById('successMsg');
 
-    const loginEmail = document.getElementById('loginEmail');
+    const loginUsername = document.getElementById('loginUsername');
     const loginPassword = document.getElementById('loginPassword');
     const loginBtn = document.getElementById('loginBtn');
 
@@ -384,10 +365,6 @@
     const regDescription = document.getElementById('regDescription');
     const registerBtn = document.getElementById('registerBtn');
     const usernameHint = document.getElementById('usernameHint');
-
-    const verifyCode = document.getElementById('verifyCode');
-    const verifyBtn = document.getElementById('verifyBtn');
-    const resendCode = document.getElementById('resendCode');
 
     const switchToRegister = document.getElementById('switchToRegister');
     const switchToLogin = document.getElementById('switchToLogin');
@@ -407,10 +384,8 @@
     let currentChat = null;
     let allUsers = [];
     let chatListener = null;
-    let verificationInterval = null;
     let usernameAvailable = false;
 
-    // ----- ФУНКЦИИ -----
     function showError(msg, hint = '') {
         errorMsg.style.display = 'block';
         errorText.textContent = msg;
@@ -431,23 +406,14 @@
     function showLogin() {
         loginMode.classList.remove('hidden');
         registerMode.classList.add('hidden');
-        verifyMode.classList.add('hidden');
         hideMessages();
     }
     function showRegister() {
         loginMode.classList.add('hidden');
         registerMode.classList.remove('hidden');
-        verifyMode.classList.add('hidden');
-        hideMessages();
-    }
-    function showVerify() {
-        loginMode.classList.add('hidden');
-        registerMode.classList.add('hidden');
-        verifyMode.classList.remove('hidden');
         hideMessages();
     }
 
-    // ----- ПРОВЕРКА ЮЗЕРНЕЙМА -----
     regUsername.addEventListener('input', () => {
         const username = regUsername.value.trim();
         if (!username) {
@@ -475,82 +441,54 @@
         });
     });
 
-    // ----- ОБРАБОТКА ОШИБОК -----
-    function handleAuthError(err) {
-        let message = err.message;
-        let hint = '';
-        switch (err.code) {
-            case 'auth/email-already-in-use':
-                message = '❌ Эта почта уже зарегистрирована.';
-                hint = 'Попробуйте <a onclick="switchToLogin.click()">войти</a> или используйте другую почту.';
-                break;
-            case 'auth/invalid-email':
-                message = '❌ Неверный формат почты.';
-                hint = 'Введите корректный email (например, user@example.com)';
-                break;
-            case 'auth/weak-password':
-                message = '❌ Пароль слишком слабый.';
-                hint = 'Используйте минимум 6 символов.';
-                break;
-            case 'auth/user-not-found':
-                message = '❌ Пользователь не найден.';
-                hint = 'Проверьте почту или <a onclick="switchToRegister.click()">зарегистрируйтесь</a>.';
-                break;
-            case 'auth/wrong-password':
-                message = '❌ Неверный пароль.';
-                hint = 'Попробуйте ещё раз или <a onclick="switchToRegister.click()">зарегистрируйтесь</a>.';
-                break;
-            default:
-                message = '❌ ' + err.message;
-                hint = '';
-        }
-        showError(message, hint);
-    }
-
-    // ----- ВХОД -----
     loginBtn.addEventListener('click', () => {
-        const email = loginEmail.value.trim();
+        const username = loginUsername.value.trim();
         const pass = loginPassword.value.trim();
-        if (!email || !pass) { showError('Заполните все поля'); return; }
+        if (!username || !pass) { showError('Заполните все поля'); return; }
         hideMessages();
         loginBtn.disabled = true;
         loginBtn.textContent = 'Вход...';
-        auth.signInWithEmailAndPassword(email, pass)
-            .then((userCred) => {
+
+        db.ref('users').orderByChild('username').equalTo(username).once('value', (snap) => {
+            const data = snap.val();
+            if (!data) {
                 loginBtn.disabled = false;
                 loginBtn.textContent = 'Войти';
-                if (!userCred.user.emailVerified) {
-                    userCred.user.sendEmailVerification().then(() => {
-                        showVerify();
-                        showSuccess('Код подтверждения отправлен на ' + email);
-                        window._verifyEmail = email;
-                        window._verifyPassword = pass;
-                        startVerificationCheck();
-                    }).catch(err => {
-                        showError('Ошибка отправки кода: ' + err.message);
-                    });
-                }
-            })
-            .catch(err => {
+                showError('❌ Пользователь с таким юзернеймом не найден');
+                return;
+            }
+            const uid = Object.keys(data)[0];
+            const userData = data[uid];
+            if (userData.password === pass) {
                 loginBtn.disabled = false;
                 loginBtn.textContent = 'Войти';
-                handleAuthError(err);
-            });
+                authPage.style.display = 'none';
+                app.style.display = 'flex';
+                initChat(uid);
+                showSuccess('✅ Добро пожаловать, ' + userData.name + '!');
+            } else {
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Войти';
+                showError('❌ Неверный пароль');
+            }
+        }).catch(err => {
+            loginBtn.disabled = false;
+            loginBtn.textContent = 'Войти';
+            showError('❌ Ошибка: ' + err.message);
+        });
     });
 
-    // ----- РЕГИСТРАЦИЯ -----
     registerBtn.addEventListener('click', () => {
         const username = regUsername.value.trim();
         const name = regName.value.trim();
-        const email = regEmail.value.trim();
         const pass = regPassword.value.trim();
+        const email = regEmail.value.trim();
         const description = regDescription.value.trim();
 
         if (!username) { showError('Введите юзернейм'); return; }
         if (!/^[a-zA-Z0-9_]+$/.test(username)) { showError('Юзернейм: только латиница, цифры и _'); return; }
         if (!usernameAvailable) { showError('Юзернейм уже занят или не проверен'); return; }
         if (!name) { showError('Введите ваше имя'); return; }
-        if (!email) { showError('Введите электронную почту'); return; }
         if (!pass) { showError('Введите пароль'); return; }
         if (pass.length < 6) { showError('Пароль должен быть минимум 6 символов'); return; }
 
@@ -558,157 +496,42 @@
         registerBtn.disabled = true;
         registerBtn.textContent = 'Регистрация...';
 
-        auth.createUserWithEmailAndPassword(email, pass)
-            .then((userCred) => {
-                registerBtn.disabled = false;
-                registerBtn.textContent = 'Зарегистрироваться';
+        const uid = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+        const userRef = db.ref('users').child(uid);
+        const userData = {
+            username: username,
+            name: name,
+            password: pass,
+            description: description || '',
+            created: Date.now()
+        };
+        if (email) userData.email = email;
 
-                const uid = userCred.user.uid;
-                const userRef = db.ref('users').child(uid);
-                userRef.set({
-                    username: username,
-                    name: name,
-                    email: email,
-                    description: description || '',
-                    created: Date.now()
-                }).then(() => {
-                    userCred.user.sendEmailVerification()
-                        .then(() => {
-                            showVerify();
-                            showSuccess('Код подтверждения отправлен на ' + email);
-                            window._verifyEmail = email;
-                            window._verifyPassword = pass;
-                            window._verifyUid = uid;
-                            startVerificationCheck();
-                        })
-                        .catch(err => {
-                            showError('Ошибка отправки кода: ' + err.message);
-                        });
-                }).catch(err => {
-                    showError('Ошибка сохранения данных: ' + err.message);
-                });
-            })
-            .catch(err => {
-                registerBtn.disabled = false;
-                registerBtn.textContent = 'Зарегистрироваться';
-                handleAuthError(err);
-            });
-    });
-
-    // ----- ПРОВЕРКА ПОДТВЕРЖДЕНИЯ -----
-    function startVerificationCheck() {
-        if (verificationInterval) clearInterval(verificationInterval);
-        verificationInterval = setInterval(() => {
-            if (auth.currentUser) {
-                auth.currentUser.reload().then(() => {
-                    if (auth.currentUser.emailVerified) {
-                        clearInterval(verificationInterval);
-                        verificationInterval = null;
-                        showSuccess('✅ Почта подтверждена! Вход выполнен.');
-                        setTimeout(() => {
-                            auth.signInWithEmailAndPassword(
-                                auth.currentUser.email,
-                                window._verifyPassword || ''
-                            ).catch(() => {});
-                        }, 500);
-                    }
-                });
-            }
-        }, 3000);
-    }
-
-    verifyBtn.addEventListener('click', () => {
-        const code = verifyCode.value.trim();
-        if (!code) { showError('Введите код из письма'); return; }
-        hideMessages();
-        verifyBtn.disabled = true;
-        verifyBtn.textContent = 'Проверка...';
-        
-        if (auth.currentUser) {
-            auth.currentUser.reload().then(() => {
-                if (auth.currentUser.emailVerified) {
-                    showSuccess('✅ Почта подтверждена! Вход выполнен.');
-                    verifyBtn.disabled = false;
-                    verifyBtn.textContent = 'Подтвердить';
-                    if (verificationInterval) clearInterval(verificationInterval);
-                    auth.signInWithEmailAndPassword(
-                        auth.currentUser.email,
-                        window._verifyPassword || ''
-                    ).catch(() => {});
-                } else {
-                    showError('❌ Код неверный или почта ещё не подтверждена. Попробуйте ещё раз или запросите новый код.');
-                    verifyBtn.disabled = false;
-                    verifyBtn.textContent = 'Подтвердить';
-                }
-            }).catch(() => {
-                showError('❌ Ошибка проверки. Попробуйте войти вручную после подтверждения почты.');
-                verifyBtn.disabled = false;
-                verifyBtn.textContent = 'Подтвердить';
-            });
-        } else {
-            showError('❌ Пользователь не найден. Начните регистрацию заново.');
-            verifyBtn.disabled = false;
-            verifyBtn.textContent = 'Подтвердить';
-        }
-    });
-
-    resendCode.addEventListener('click', () => {
-        if (auth.currentUser) {
-            auth.currentUser.sendEmailVerification()
-                .then(() => {
-                    showSuccess('✅ Новый код отправлен на почту');
-                })
-                .catch(err => {
-                    showError('❌ Ошибка: ' + err.message);
-                });
-        } else {
-            showError('❌ Пользователь не найден. Начните регистрацию заново.');
-        }
-    });
-
-    // ----- ПЕРЕКЛЮЧЕНИЕ -----
-    switchToRegister.addEventListener('click', showRegister);
-    switchToLogin.addEventListener('click', showLogin);
-
-    // ----- ВЫХОД -----
-    logoutBtn.addEventListener('click', () => {
-        auth.signOut().then(() => {
-            app.style.display = 'none';
-            authPage.style.display = 'block';
-            showLogin();
-            hideMessages();
-            if (chatListener) { chatListener.off(); chatListener = null; }
-            if (verificationInterval) { clearInterval(verificationInterval); verificationInterval = null; }
+        userRef.set(userData).then(() => {
+            registerBtn.disabled = false;
+            registerBtn.textContent = 'Зарегистрироваться';
+            showSuccess('✅ Регистрация успешна!');
+            authPage.style.display = 'none';
+            app.style.display = 'flex';
+            initChat(uid);
+        }).catch(err => {
+            registerBtn.disabled = false;
+            registerBtn.textContent = 'Зарегистрироваться';
+            showError('❌ Ошибка сохранения: ' + err.message);
         });
     });
 
-    // ----- СОСТОЯНИЕ АУТЕНТИФИКАЦИИ -----
-    auth.onAuthStateChanged((user) => {
-        if (user && user.emailVerified) {
-            authPage.style.display = 'none';
-            app.style.display = 'flex';
-            initChat(user.uid);
-            if (verificationInterval) {
-                clearInterval(verificationInterval);
-                verificationInterval = null;
-            }
-        } else if (user && !user.emailVerified) {
-            authPage.style.display = 'block';
-            app.style.display = 'none';
-            showVerify();
-            showSuccess('📧 Подтвердите почту. Код отправлен на ' + user.email);
-            window._verifyEmail = user.email;
-            window._verifyPassword = regPassword.value || '';
-            startVerificationCheck();
-        } else {
-            authPage.style.display = 'block';
-            app.style.display = 'none';
-            showLogin();
-            hideMessages();
-        }
+    switchToRegister.addEventListener('click', showRegister);
+    switchToLogin.addEventListener('click', showLogin);
+
+    logoutBtn.addEventListener('click', () => {
+        app.style.display = 'none';
+        authPage.style.display = 'block';
+        showLogin();
+        hideMessages();
+        if (chatListener) { chatListener.off(); chatListener = null; }
     });
 
-    // ----- ЧАТ (РЕАЛЬНОЕ ВРЕМЯ) -----
     function initChat(uid) {
         const userRef = db.ref('users').child(uid);
         userRef.once('value', (snap) => {
@@ -883,7 +706,6 @@
         });
     }
 
-    // ----- НАСТРОЙКИ -----
     function setupSettings() {
         settingsBtn.addEventListener('click', () => {
             settingsName.value = currentUser.name || '';
@@ -958,7 +780,7 @@
         });
     }
 
-    console.log('🔥 Дискард — подтверждение по почте + сообщения в реальном времени');
+    console.log('🔥 Дискард — вход по юзернейму, почта необязательна');
 </script>
 </body>
 </html>
