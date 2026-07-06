@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Дискард — чат</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, sans-serif; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
         body { background: #1e1f22; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 16px; }
 
         .discard-auth {
@@ -332,6 +332,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <script>
+    // ====== КОНФИГ ======
     const firebaseConfig = {
         apiKey: "AIzaSyBEaTlUs6XtXnnNbPITo70upMX12lDxKk4",
         authDomain: "discard-mess.firebaseapp.com",
@@ -341,10 +342,12 @@
         messagingSenderId: "343493809803",
         appId: "1:343493809803:web:b2dc5d99fad37fa39ce68e"
     };
+    // =====================
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
+    // DOM
     const authPage = document.getElementById('authPage');
     const app = document.getElementById('app');
     const loginMode = document.getElementById('loginMode');
@@ -385,7 +388,9 @@
     let allUsers = [];
     let chatListener = null;
     let usernameAvailable = false;
+    let sessionUid = localStorage.getItem('discard_session_uid');
 
+    // ----- ФУНКЦИИ -----
     function showError(msg, hint = '') {
         errorMsg.style.display = 'block';
         errorText.textContent = msg;
@@ -414,6 +419,7 @@
         hideMessages();
     }
 
+    // ----- ПРОВЕРКА ЮЗЕРНЕЙМА -----
     regUsername.addEventListener('input', () => {
         const username = regUsername.value.trim();
         if (!username) {
@@ -441,6 +447,36 @@
         });
     });
 
+    // ====== ВХОД С СОХРАНЕНИЕМ СЕССИИ ======
+    function loginUser(uid) {
+        authPage.style.display = 'none';
+        app.style.display = 'flex';
+        localStorage.setItem('discard_session_uid', uid);
+        initChat(uid);
+    }
+
+    // Проверяем сохранённую сессию
+    if (sessionUid) {
+        db.ref('users').child(sessionUid).once('value', (snap) => {
+            if (snap.exists()) {
+                loginUser(sessionUid);
+            } else {
+                localStorage.removeItem('discard_session_uid');
+                sessionUid = null;
+                authPage.style.display = 'block';
+                app.style.display = 'none';
+                showLogin();
+            }
+        }).catch(() => {
+            localStorage.removeItem('discard_session_uid');
+            sessionUid = null;
+            authPage.style.display = 'block';
+            app.style.display = 'none';
+            showLogin();
+        });
+    }
+
+    // ----- ВХОД -----
     loginBtn.addEventListener('click', () => {
         const username = loginUsername.value.trim();
         const pass = loginPassword.value.trim();
@@ -462,9 +498,7 @@
             if (userData.password === pass) {
                 loginBtn.disabled = false;
                 loginBtn.textContent = 'Войти';
-                authPage.style.display = 'none';
-                app.style.display = 'flex';
-                initChat(uid);
+                loginUser(uid);
                 showSuccess('✅ Добро пожаловать, ' + userData.name + '!');
             } else {
                 loginBtn.disabled = false;
@@ -478,6 +512,7 @@
         });
     });
 
+    // ----- РЕГИСТРАЦИЯ -----
     registerBtn.addEventListener('click', () => {
         const username = regUsername.value.trim();
         const name = regName.value.trim();
@@ -511,9 +546,7 @@
             registerBtn.disabled = false;
             registerBtn.textContent = 'Зарегистрироваться';
             showSuccess('✅ Регистрация успешна!');
-            authPage.style.display = 'none';
-            app.style.display = 'flex';
-            initChat(uid);
+            loginUser(uid);
         }).catch(err => {
             registerBtn.disabled = false;
             registerBtn.textContent = 'Зарегистрироваться';
@@ -521,10 +554,14 @@
         });
     });
 
+    // ----- ПЕРЕКЛЮЧЕНИЕ -----
     switchToRegister.addEventListener('click', showRegister);
     switchToLogin.addEventListener('click', showLogin);
 
+    // ----- ВЫХОД -----
     logoutBtn.addEventListener('click', () => {
+        localStorage.removeItem('discard_session_uid');
+        sessionUid = null;
         app.style.display = 'none';
         authPage.style.display = 'block';
         showLogin();
@@ -532,6 +569,7 @@
         if (chatListener) { chatListener.off(); chatListener = null; }
     });
 
+    // ====== ЧАТ ======
     function initChat(uid) {
         const userRef = db.ref('users').child(uid);
         userRef.once('value', (snap) => {
@@ -633,6 +671,7 @@
         });
     }
 
+    // ====== ПОДПИСКА НА НОВЫЕ СООБЩЕНИЯ (РЕАЛЬНОЕ ВРЕМЯ) ======
     function subscribeToMessages(uid) {
         if (chatListener) { chatListener.off(); }
         const chatRef = db.ref('messages').child(uid).child(currentUser.uid);
@@ -678,6 +717,7 @@
         document.getElementById('chatBox').scrollTop = document.getElementById('chatBox').scrollHeight;
     }
 
+    // ====== ОТПРАВКА СООБЩЕНИЯ ======
     function sendMessage() {
         if (!currentChat) return;
         const input = document.getElementById('msgInput');
@@ -693,7 +733,10 @@
         chatRef.push().set(newMsg).then(() => {
             input.value = '';
             input.focus();
-        }).catch(() => {});
+        }).catch((err) => {
+            console.error('Ошибка отправки:', err);
+            showError('❌ Ошибка отправки: ' + err.message);
+        });
     }
 
     function setupChatListeners() {
@@ -706,6 +749,7 @@
         });
     }
 
+    // ----- НАСТРОЙКИ -----
     function setupSettings() {
         settingsBtn.addEventListener('click', () => {
             settingsName.value = currentUser.name || '';
@@ -780,7 +824,7 @@
         });
     }
 
-    console.log('🔥 Дискард — вход по юзернейму, почта необязательна');
+    console.log('🔥 Дискард — стабильная версия с сессией');
 </script>
 </body>
 </html>
