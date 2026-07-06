@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Дискард — голосовые звонки</title>
+    <title>Дискард</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📡</text></svg>">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, sans-serif; }
         body { background: #1e1f22; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 16px; }
@@ -133,26 +134,6 @@
         .chat-header .chat-header-info { min-width: 0; }
         .chat-header .chat-header-name { font-size: 18px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .chat-header .chat-header-username { font-size: 13px; font-weight: 400; color: #7a7f89; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-        .chat-header .call-btn {
-            background: #2ecc71;
-            border: none;
-            color: white;
-            padding: 6px 16px;
-            border-radius: 20px;
-            font-size: 14px;
-            cursor: pointer;
-            transition: 0.2s;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .chat-header .call-btn:hover { background: #27ae60; }
-        .chat-header .call-btn.in-call {
-            background: #e74c3c;
-        }
-        .chat-header .call-btn.in-call:hover { background: #c0392b; }
-
         .chat-header .logout-btn {
             background: #3a3c42; border: none; color: #b5bac1;
             padding: 6px 14px; border-radius: 20px; font-size: 13px; cursor: pointer; transition: 0.2s;
@@ -205,36 +186,18 @@
         .modal-overlay.show { display: flex; }
         .modal {
             background: #2b2d31; border-radius: 24px; padding: 32px 36px;
-            max-width: 520px; width: 100%; color: #f2f3f5;
+            max-width: 480px; width: 100%; color: #f2f3f5;
             box-shadow: 0 20px 60px rgba(0,0,0,0.8);
-            max-height: 90vh;
-            overflow-y: auto;
         }
-        .modal h2 { font-size: 24px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; }
+        .modal h2 { font-size: 24px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px; }
         .modal h2 .icon { font-size: 28px; }
-
-        .modal-tabs {
-            display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid #3a3c42;
-        }
-        .modal-tabs button {
-            background: transparent; border: none; color: #b5bac1;
-            padding: 10px 16px; cursor: pointer; font-size: 14px; font-weight: 500;
-            border-bottom: 2px solid transparent; transition: 0.2s;
-        }
-        .modal-tabs button:hover { color: #f2f3f5; }
-        .modal-tabs button.active { color: #5865f2; border-bottom-color: #5865f2; }
-
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-
         .modal label { font-size: 14px; font-weight: 500; color: #b5bac1; display: block; margin-bottom: 4px; margin-top: 12px; }
-        .modal input, .modal textarea, .modal select {
+        .modal input, .modal textarea {
             background: #383a40; border: none; padding: 12px 16px; border-radius: 10px;
             color: #f2f3f5; font-size: 15px; outline: none; width: 100%;
         }
-        .modal input:focus, .modal textarea:focus, .modal select:focus { background: #404249; box-shadow: 0 0 0 2px #5865f2; }
+        .modal input:focus, .modal textarea:focus { background: #404249; box-shadow: 0 0 0 2px #5865f2; }
         .modal textarea { resize: vertical; min-height: 60px; font-family: inherit; }
-        .modal select option { background: #2b2d31; }
         .modal .btn-save {
             background: #5865f2; border: none; color: white; font-weight: 600;
             padding: 14px; border-radius: 12px; font-size: 16px; cursor: pointer;
@@ -257,64 +220,10 @@
             border-radius: 10px; font-size: 14px; display: none; margin-top: 12px;
             border-left: 4px solid #e74c3c;
         }
-        .modal .audio-test-btn {
-            background: #3a3c42; border: none; color: #f2f3f5;
-            padding: 8px 16px; border-radius: 8px; cursor: pointer; margin-top: 8px;
-            font-size: 13px; transition: 0.2s;
-        }
-        .modal .audio-test-btn:hover { background: #4e5058; }
-
-        /* Модалка входящего звонка */
-        .incoming-call {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.85);
-            backdrop-filter: blur(6px);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 2000;
-            flex-direction: column;
-        }
-        .incoming-call.show { display: flex; }
-        .incoming-call .call-box {
-            background: #2b2d31;
-            padding: 40px 50px;
-            border-radius: 28px;
-            text-align: center;
-            color: #f2f3f5;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
-            max-width: 400px;
-            width: 100%;
-        }
-        .incoming-call .call-box h2 { font-size: 28px; margin-bottom: 8px; }
-        .incoming-call .call-box p { color: #7a7f89; margin-bottom: 24px; font-size: 16px; }
-        .incoming-call .call-box .call-actions {
-            display: flex;
-            gap: 16px;
-            justify-content: center;
-        }
-        .incoming-call .call-box .call-actions button {
-            border: none;
-            padding: 12px 32px;
-            border-radius: 40px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: 0.15s;
-        }
-        .incoming-call .call-box .call-actions .accept { background: #2ecc71; color: #fff; }
-        .incoming-call .call-box .call-actions .accept:hover { background: #27ae60; }
-        .incoming-call .call-box .call-actions .reject { background: #e74c3c; color: #fff; }
-        .incoming-call .call-box .call-actions .reject:hover { background: #c0392b; }
 
         @media (max-width: 700px) {
             .discard-sidebar { width: 200px; }
             .modal { padding: 24px 20px; margin: 16px; }
-            .incoming-call .call-box { padding: 24px 20px; }
         }
     </style>
 </head>
@@ -388,10 +297,7 @@
                     <div class="chat-header-username" id="headerUsername">@username</div>
                 </div>
             </div>
-            <div>
-                <button class="call-btn" id="callBtn" style="display:none;">📞 Позвонить</button>
-                <button class="logout-btn" id="logoutBtn">🚪 Выйти</button>
-            </div>
+            <button class="logout-btn" id="logoutBtn">🚪 Выйти</button>
         </div>
 
         <div class="discard-chat" id="chatBox">
@@ -405,53 +311,17 @@
     </div>
 </div>
 
-<!-- Модалка входящего звонка -->
-<div class="incoming-call" id="incomingCall">
-    <div class="call-box">
-        <h2>📞 Входящий звонок</h2>
-        <p id="callerName">Неизвестный</p>
-        <div class="call-actions">
-            <button class="accept" id="acceptCallBtn">✅ Принять</button>
-            <button class="reject" id="rejectCallBtn">❌ Отклонить</button>
-        </div>
-    </div>
-</div>
-
 <div class="modal-overlay" id="settingsModal">
     <div class="modal">
         <h2><span class="icon">⚙️</span> Настройки</h2>
-        
-        <div class="modal-tabs">
-            <button class="active" data-tab="tab-account">👤 Аккаунт</button>
-            <button data-tab="tab-audio">🎧 Аудио</button>
-        </div>
-
-        <div class="tab-content active" id="tab-account">
-            <label>Имя</label>
-            <input type="text" id="settingsName" placeholder="Ваше имя">
-            <label>Юзернейм (нельзя изменить)</label>
-            <input type="text" id="settingsUsername" disabled style="opacity:0.6;">
-            <label>Описание</label>
-            <textarea id="settingsDescription" placeholder="О себе..."></textarea>
-            <label>Электронная почта</label>
-            <input type="email" id="settingsEmail" placeholder="you@example.com">
-        </div>
-
-        <div class="tab-content" id="tab-audio">
-            <label>🎤 Микрофон</label>
-            <select id="audioInputSelect">
-                <option value="">Выберите микрофон...</option>
-            </select>
-            <button class="audio-test-btn" id="testMicBtn">🔊 Проверить микрофон</button>
-            
-            <label style="margin-top:16px;">🔊 Динамики (выход)</label>
-            <select id="audioOutputSelect">
-                <option value="">Выберите динамики...</option>
-            </select>
-            <button class="audio-test-btn" id="testOutputBtn">🔊 Проверить динамики</button>
-            <div style="margin-top:12px;font-size:13px;color:#7a7f89;" id="audioStatus">Готово</div>
-        </div>
-
+        <label>Имя</label>
+        <input type="text" id="settingsName" placeholder="Ваше имя">
+        <label>Юзернейм (нельзя изменить)</label>
+        <input type="text" id="settingsUsername" disabled style="opacity:0.6;">
+        <label>Описание</label>
+        <textarea id="settingsDescription" placeholder="О себе..."></textarea>
+        <label>Электронная почта</label>
+        <input type="email" id="settingsEmail" placeholder="you@example.com">
         <div class="saved-toast" id="settingsSaved">✅ Изменения сохранены</div>
         <div class="error-toast" id="settingsError">❌ Ошибка</div>
         <button class="btn-save" id="settingsSaveBtn">💾 Сохранить</button>
@@ -463,7 +333,6 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <script>
-    // ====== КОНФИГ FIREBASE ======
     var firebaseConfig = {
         apiKey: "AIzaSyBEaTlUs6XtXnnNbPITo70upMX12lDxKk4",
         authDomain: "discard-mess.firebaseapp.com",
@@ -477,7 +346,6 @@
     firebase.initializeApp(firebaseConfig);
     var db = firebase.database();
 
-    // ====== DOM ======
     var authPage = document.getElementById('authPage');
     var app = document.getElementById('app');
     var loginMode = document.getElementById('loginMode');
@@ -502,12 +370,6 @@
     var switchToRegister = document.getElementById('switchToRegister');
     var switchToLogin = document.getElementById('switchToLogin');
     var logoutBtn = document.getElementById('logoutBtn');
-    var callBtn = document.getElementById('callBtn');
-    var incomingCall = document.getElementById('incomingCall');
-    var callerName = document.getElementById('callerName');
-    var acceptCallBtn = document.getElementById('acceptCallBtn');
-    var rejectCallBtn = document.getElementById('rejectCallBtn');
-
     var settingsBtn = document.getElementById('settingsBtn');
     var settingsModal = document.getElementById('settingsModal');
     var settingsCloseBtn = document.getElementById('settingsCloseBtn');
@@ -519,12 +381,6 @@
     var settingsSaved = document.getElementById('settingsSaved');
     var settingsError = document.getElementById('settingsError');
 
-    var audioInputSelect = document.getElementById('audioInputSelect');
-    var audioOutputSelect = document.getElementById('audioOutputSelect');
-    var testMicBtn = document.getElementById('testMicBtn');
-    var testOutputBtn = document.getElementById('testOutputBtn');
-    var audioStatus = document.getElementById('audioStatus');
-
     var currentUser = null;
     var currentChat = null;
     var allUsers = [];
@@ -532,331 +388,6 @@
     var usernameAvailable = false;
     var sessionUid = localStorage.getItem('discard_session_uid');
 
-    // ====== ЗВОНКИ (БЕЗ PEERJS, ЧЕРЕЗ FIREBASE) ======
-    var localStream = null;
-    var remoteStream = null;
-    var peerConnection = null;
-    var isInCall = false;
-    var callReceiverUid = null;
-
-    var servers = {
-        iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' }
-        ]
-    };
-
-    // ====== ФУНКЦИИ ЗВОНКОВ ======
-    function startCall() {
-        if (!currentChat) {
-            audioStatus.textContent = '❌ Выберите собеседника';
-            return;
-        }
-        if (isInCall) {
-            endCall();
-            return;
-        }
-
-        audioStatus.textContent = '📞 Идёт вызов...';
-        navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-            .then(function(stream) {
-                localStream = stream;
-                // Отправляем уведомление о звонке
-                var callData = {
-                    from: currentUser.uid,
-                    fromName: currentUser.name,
-                    timestamp: Date.now()
-                };
-                db.ref('calls').child(currentChat).set(callData);
-                audioStatus.textContent = '📞 Ожидаем ответа...';
-                // Слушаем ответ
-                var answerRef = db.ref('calls').child(currentChat).child('answer');
-                answerRef.on('value', function(snap) {
-                    var data = snap.val();
-                    if (data === 'accept') {
-                        answerRef.off();
-                        audioStatus.textContent = '🔊 Звонок принят!';
-                        startPeerConnection(true);
-                    } else if (data === 'reject') {
-                        answerRef.off();
-                        audioStatus.textContent = '❌ Звонок отклонён';
-                        endCall();
-                    }
-                });
-                // Таймаут 30 секунд
-                setTimeout(function() {
-                    answerRef.off();
-                    if (!isInCall) {
-                        audioStatus.textContent = '⏰ Звонок не отвечен';
-                        endCall();
-                    }
-                }, 30000);
-            })
-            .catch(function(err) {
-                audioStatus.textContent = '❌ Ошибка: ' + err.message;
-                console.error(err);
-            });
-    }
-
-    function startPeerConnection(isCaller) {
-        peerConnection = new RTCPeerConnection(servers);
-        
-        if (isCaller) {
-            // Исходящий звонок — добавляем локальный стрим
-            localStream.getTracks().forEach(function(track) {
-                peerConnection.addTrack(track, localStream);
-            });
-            // Создаём offer
-            peerConnection.createOffer()
-                .then(function(offer) {
-                    return peerConnection.setLocalDescription(offer);
-                })
-                .then(function() {
-                    // Отправляем offer в Firebase
-                    db.ref('calls').child(currentChat).child('offer').set({
-                        sdp: peerConnection.localDescription.sdp,
-                        type: peerConnection.localDescription.type
-                    });
-                })
-                .catch(function(err) {
-                    console.error('Ошибка offer:', err);
-                });
-        }
-
-        peerConnection.onicecandidate = function(event) {
-            if (event.candidate) {
-                db.ref('calls').child(currentChat).child('candidate').push().set({
-                    candidate: event.candidate.candidate,
-                    sdpMid: event.candidate.sdpMid,
-                    sdpMLineIndex: event.candidate.sdpMLineIndex
-                });
-            }
-        };
-
-        peerConnection.ontrack = function(event) {
-            remoteStream = event.streams[0];
-            var audio = new Audio();
-            audio.srcObject = remoteStream;
-            audio.play();
-            audioStatus.textContent = '🔊 Разговор идёт...';
-            callBtn.textContent = '🔴 Положить трубку';
-            callBtn.classList.add('in-call');
-            isInCall = true;
-        };
-
-        // Слушаем offer (если мы получатель)
-        if (!isCaller) {
-            var offerRef = db.ref('calls').child(currentChat).child('offer');
-            offerRef.on('value', function(snap) {
-                var data = snap.val();
-                if (data) {
-                    offerRef.off();
-                    var desc = new RTCSessionDescription(data);
-                    peerConnection.setRemoteDescription(desc)
-                        .then(function() {
-                            return navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                        })
-                        .then(function(stream) {
-                            localStream = stream;
-                            localStream.getTracks().forEach(function(track) {
-                                peerConnection.addTrack(track, localStream);
-                            });
-                            return peerConnection.createAnswer();
-                        })
-                        .then(function(answer) {
-                            return peerConnection.setLocalDescription(answer);
-                        })
-                        .then(function() {
-                            db.ref('calls').child(currentChat).child('answer').set('accept');
-                            db.ref('calls').child(currentChat).child('offer').set({
-                                sdp: peerConnection.localDescription.sdp,
-                                type: peerConnection.localDescription.type
-                            });
-                        })
-                        .catch(function(err) {
-                            console.error('Ошибка answer:', err);
-                        });
-                }
-            });
-        }
-
-        // Слушаем ICE кандидаты
-        var candidateRef = db.ref('calls').child(currentChat).child('candidate');
-        candidateRef.on('child_added', function(snap) {
-            var data = snap.val();
-            if (data) {
-                var candidate = new RTCIceCandidate(data);
-                peerConnection.addIceCandidate(candidate)
-                    .catch(function(err) {
-                        console.error('Ошибка ICE:', err);
-                    });
-            }
-        });
-    }
-
-    function endCall() {
-        if (peerConnection) {
-            peerConnection.close();
-            peerConnection = null;
-        }
-        if (localStream) {
-            localStream.getTracks().forEach(function(t) { t.stop(); });
-            localStream = null;
-        }
-        if (remoteStream) {
-            remoteStream.getTracks().forEach(function(t) { t.stop(); });
-            remoteStream = null;
-        }
-        isInCall = false;
-        callReceiverUid = null;
-        callBtn.textContent = '📞 Позвонить';
-        callBtn.classList.remove('in-call');
-        audioStatus.textContent = '📞 Звонок завершён';
-        db.ref('calls').child(currentChat).remove();
-    }
-
-    // ====== ОБРАБОТЧИКИ ЗВОНКОВ ======
-    callBtn.addEventListener('click', startCall);
-
-    // Слушаем входящие звонки
-    function listenForCalls() {
-        if (!currentUser) return;
-        var callsRef = db.ref('calls');
-        callsRef.on('child_added', function(snap) {
-            var data = snap.val();
-            var callerUid = snap.key;
-            if (callerUid === currentUser.uid) return;
-            if (data.from === currentUser.uid) return;
-            
-            // Показываем входящий звонок
-            incomingCall.classList.add('show');
-            callerName.textContent = data.fromName || 'Неизвестный';
-            window._incomingCallData = {
-                callerUid: callerUid,
-                callData: data
-            };
-        });
-    }
-
-    // ====== ПРИНЯТЬ ЗВОНОК ======
-    acceptCallBtn.addEventListener('click', function() {
-        var callData = window._incomingCallData;
-        if (!callData) return;
-        incomingCall.classList.remove('show');
-        
-        currentChat = callData.callerUid;
-        callReceiverUid = callData.callerUid;
-        db.ref('calls').child(currentChat).child('answer').set('accept');
-        audioStatus.textContent = '🔊 Звонок принят!';
-        startPeerConnection(false);
-        // Обновляем интерфейс
-        var user = allUsers.find(function(u) { return u.uid === currentChat; });
-        if (user) {
-            document.getElementById('headerName').textContent = user.name;
-            document.getElementById('headerUsername').textContent = '@' + user.username;
-            document.getElementById('headerAvatar').textContent = user.name.charAt(0).toUpperCase();
-            callBtn.style.display = 'inline-flex';
-        }
-        window._incomingCallData = null;
-    });
-
-    // ====== ОТКЛОНИТЬ ЗВОНОК ======
-    rejectCallBtn.addEventListener('click', function() {
-        var callData = window._incomingCallData;
-        if (callData) {
-            db.ref('calls').child(callData.callerUid).child('answer').set('reject');
-        }
-        incomingCall.classList.remove('show');
-        window._incomingCallData = null;
-        audioStatus.textContent = '❌ Звонок отклонён';
-    });
-
-    // ====== АУДИО ======
-    function getAudioDevices() {
-        if (!navigator.mediaDevices) {
-            audioStatus.textContent = '⚠️ Ваш браузер не поддерживает аудио';
-            return;
-        }
-        navigator.mediaDevices.getUserMedia({ audio: true })
-            .then(function(stream) {
-                stream.getTracks().forEach(function(t) { t.stop(); });
-                return navigator.mediaDevices.enumerateDevices();
-            })
-            .then(function(devices) {
-                var inputs = devices.filter(function(d) { return d.kind === 'audioinput'; });
-                audioInputSelect.innerHTML = '<option value="">Выберите микрофон...</option>';
-                for (var i = 0; i < inputs.length; i++) {
-                    var opt = document.createElement('option');
-                    opt.value = inputs[i].deviceId;
-                    opt.textContent = inputs[i].label || 'Микрофон ' + (i + 1);
-                    audioInputSelect.appendChild(opt);
-                }
-
-                var outputs = devices.filter(function(d) { return d.kind === 'audiooutput'; });
-                audioOutputSelect.innerHTML = '<option value="">Выберите динамики...</option>';
-                for (var j = 0; j < outputs.length; j++) {
-                    var opt2 = document.createElement('option');
-                    opt2.value = outputs[j].deviceId;
-                    opt2.textContent = outputs[j].label || 'Динамики ' + (j + 1);
-                    audioOutputSelect.appendChild(opt2);
-                }
-
-                var savedInput = localStorage.getItem('discard_audio_input');
-                var savedOutput = localStorage.getItem('discard_audio_output');
-                if (savedInput) audioInputSelect.value = savedInput;
-                if (savedOutput) audioOutputSelect.value = savedOutput;
-
-                audioStatus.textContent = '✅ Найдено микрофонов: ' + inputs.length + ', динамиков: ' + outputs.length;
-            })
-            .catch(function(err) {
-                audioStatus.textContent = '⚠️ Нет доступа к микрофону: ' + err.message;
-            });
-    }
-
-    testMicBtn.addEventListener('click', function() {
-        var deviceId = audioInputSelect.value;
-        var constraints = { audio: { deviceId: deviceId ? { exact: deviceId } : undefined } };
-        navigator.mediaDevices.getUserMedia(constraints)
-            .then(function(stream) {
-                audioStatus.textContent = '🎤 Микрофон работает!';
-                setTimeout(function() {
-                    audioStatus.textContent = '✅ Микрофон проверен';
-                    stream.getTracks().forEach(function(t) { t.stop(); });
-                }, 2000);
-            })
-            .catch(function(err) {
-                audioStatus.textContent = '❌ Ошибка микрофона: ' + err.message;
-            });
-    });
-
-    testOutputBtn.addEventListener('click', function() {
-        try {
-            var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            var oscillator = audioCtx.createOscillator();
-            var gainNode = audioCtx.createGain();
-            oscillator.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-            oscillator.frequency.value = 440;
-            gainNode.gain.value = 0.3;
-            oscillator.start();
-            audioStatus.textContent = '🔊 Динамики работают (440 Гц)';
-            setTimeout(function() {
-                oscillator.stop();
-                audioStatus.textContent = '✅ Динамики проверены';
-            }, 1500);
-        } catch (err) {
-            audioStatus.textContent = '❌ Ошибка динамиков: ' + err.message;
-        }
-    });
-
-    audioInputSelect.addEventListener('change', function() {
-        localStorage.setItem('discard_audio_input', audioInputSelect.value);
-    });
-    audioOutputSelect.addEventListener('change', function() {
-        localStorage.setItem('discard_audio_output', audioOutputSelect.value);
-    });
-
-    // ====== АВТОРИЗАЦИЯ ======
     function showError(msg, hint) {
         if (hint === undefined) hint = '';
         errorMsg.style.display = 'block';
@@ -925,8 +456,6 @@
         app.style.display = 'flex';
         localStorage.setItem('discard_session_uid', uid);
         initChat(uid);
-        getAudioDevices();
-        listenForCalls();
     }
 
     if (sessionUid) {
@@ -1042,12 +571,8 @@
             chatListener.off();
             chatListener = null;
         }
-        endCall();
-        db.ref('calls').off();
-        callBtn.style.display = 'none';
     });
 
-    // ====== ЧАТ ======
     function initChat(uid) {
         var userRef = db.ref('users').child(uid);
         userRef.once('value', function(snap) {
@@ -1150,7 +675,6 @@
             document.getElementById('headerName').textContent = user.name;
             document.getElementById('headerUsername').textContent = '@' + user.username;
             document.getElementById('headerAvatar').textContent = user.name.charAt(0).toUpperCase();
-            callBtn.style.display = 'inline-flex';
         }
 
         document.getElementById('msgInput').disabled = false;
@@ -1186,7 +710,6 @@
     function subscribeToMessages(uid) {
         if (chatListener) {
             chatListener.off();
-            chatListener = null;
         }
         var chatRef = db.ref('messages').child(currentUser.uid).child(uid);
         chatListener = chatRef.orderByChild('time').limitToLast(1).on('child_added', function(snapshot) {
@@ -1271,24 +794,7 @@
         });
     }
 
-    // ====== НАСТРОЙКИ ======
     function setupSettings() {
-        document.querySelectorAll('.modal-tabs button').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                document.querySelectorAll('.modal-tabs button').forEach(function(b) {
-                    b.classList.remove('active');
-                });
-                btn.classList.add('active');
-                document.querySelectorAll('.tab-content').forEach(function(t) {
-                    t.classList.remove('active');
-                });
-                document.getElementById(btn.dataset.tab).classList.add('active');
-                if (btn.dataset.tab === 'tab-audio') {
-                    getAudioDevices();
-                }
-            });
-        });
-
         settingsBtn.addEventListener('click', function() {
             settingsName.value = currentUser.name || '';
             settingsUsername.value = '@' + (currentUser.username || '');
@@ -1297,7 +803,6 @@
             settingsModal.classList.add('show');
             settingsSaved.style.display = 'none';
             settingsError.style.display = 'none';
-            getAudioDevices();
         });
 
         settingsCloseBtn.addEventListener('click', function() {
@@ -1370,7 +875,7 @@
         });
     }
 
-    console.log('🔥 Дискард с голосовыми звонками через Firebase');
+    console.log('🔥 Дискард запущен');
 </script>
 </body>
 </html>
