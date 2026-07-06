@@ -2,8 +2,8 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Дискард — звонки</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Дискард</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📡</text></svg>">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, sans-serif; }
@@ -540,7 +540,12 @@
     var servers = {
         iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' }
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { 
+                urls: 'turn:turn.anyfirewall.com:443?transport=tcp',
+                username: 'webrtc',
+                credential: 'webrtc'
+            }
         ]
     };
 
@@ -1063,7 +1068,7 @@
         showLogin();
         hideMessages();
         if (chatListener) {
-            chatListener.off();
+            try { chatListener.off(); } catch(e) {}
             chatListener = null;
         }
         endCall();
@@ -1071,7 +1076,7 @@
         callBtn.style.display = 'none';
     });
 
-    // ====== ИНИЦИАЛИЗАЦИЯ ЧАТА (ИСПРАВЛЕННАЯ) ======
+    // ====== ИНИЦИАЛИЗАЦИЯ ЧАТА ======
     function initChat(uid) {
         var userRef = db.ref('users').child(uid);
         userRef.once('value', function(snap) {
@@ -1088,12 +1093,11 @@
                 document.getElementById('sidebarUserName').textContent = currentUser.name;
                 document.getElementById('sidebarUserUsername').textContent = '@' + currentUser.username;
                 
-                // ЗАПУСКАЕМ ВСЁ ТОЛЬКО ПОСЛЕ ТОГО, КАК currentUser ГОТОВ
                 loadUsers();
                 setupChatListeners();
                 setupSettings();
                 getAudioDevices();
-                listenForCalls(); // <--- ПЕРЕНЕС СЮДА
+                listenForCalls();
             }
         });
     }
@@ -1212,14 +1216,18 @@
     }
 
     function subscribeToMessages(uid) {
+        // БЕЗОПАСНАЯ ОТПИСКА
         if (chatListener) {
             try {
-                chatListener.off();
+                if (typeof chatListener.off === 'function') {
+                    chatListener.off();
+                }
             } catch(e) {
                 console.warn('Ошибка при отписке:', e);
             }
             chatListener = null;
         }
+        
         var chatRef = db.ref('messages').child(currentUser.uid).child(uid);
         chatListener = chatRef.orderByChild('time').limitToLast(1).on('child_added', function(snapshot) {
             var data = snapshot.val();
@@ -1402,7 +1410,7 @@
         });
     }
 
-    console.log('🔥 Дискард с голосовыми звонками (исправленная версия)');
+    console.log('🔥 Дискард — звонки работают!');
 </script>
 </body>
 </html>
