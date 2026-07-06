@@ -62,6 +62,9 @@
       font-weight: 400;
       font-size: 12px;
     }
+    .auth-form label .required {
+      color: #e74c3c;
+    }
 
     .auth-form input, .auth-form textarea {
       background: #383a40;
@@ -81,6 +84,18 @@
       min-height: 60px;
       max-height: 120px;
       font-family: inherit;
+    }
+
+    .auth-form .username-hint {
+      font-size: 12px;
+      color: #7a7f89;
+      margin-top: -8px;
+    }
+    .auth-form .username-hint .taken {
+      color: #e74c3c;
+    }
+    .auth-form .username-hint .available {
+      color: #2ecc71;
     }
 
     .auth-form .btn {
@@ -237,6 +252,13 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
+    .chat-item .chat-username {
+      font-size: 12px;
+      color: #7a7f89;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
     .chat-item .chat-desc {
       font-size: 12px;
       color: #7a7f89;
@@ -294,7 +316,7 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    .chat-header .chat-header-desc {
+    .chat-header .chat-header-username {
       font-size: 13px;
       font-weight: 400;
       color: #7a7f89;
@@ -440,13 +462,17 @@
     </div>
 
     <div id="registerMode" class="hidden">
-      <label>Ваше имя <span style="color:#e74c3c;">*</span></label>
+      <label>Юзернейм <span class="required">*</span></label>
+      <input type="text" id="regUsername" placeholder="alex2024" required>
+      <div class="username-hint" id="usernameHint">Только латиница, цифры и _</div>
+
+      <label>Имя <span class="required">*</span></label>
       <input type="text" id="regName" placeholder="Алексей" required>
 
-      <label>Электронная почта <span style="color:#e74c3c;">*</span></label>
+      <label>Электронная почта <span class="required">*</span></label>
       <input type="email" id="regEmail" placeholder="you@example.com" required>
 
-      <label>Пароль <span style="color:#e74c3c;">*</span> (минимум 6 символов)</label>
+      <label>Пароль <span class="required">*</span> (минимум 6 символов)</label>
       <input type="password" id="regPassword" placeholder="••••••••" required>
 
       <label>Описание <span class="optional">(необязательно)</span></label>
@@ -491,7 +517,7 @@
         <div class="avatar-small" id="headerAvatar">👤</div>
         <div class="chat-header-info">
           <div class="chat-header-name" id="headerName">Выберите чат</div>
-          <div class="chat-header-desc" id="headerDesc"></div>
+          <div class="chat-header-username" id="headerUsername">@username</div>
         </div>
       </div>
       <button class="logout-btn" id="logoutBtn">🚪 Выйти</button>
@@ -543,11 +569,13 @@
   const loginPassword = document.getElementById('loginPassword');
   const loginBtn = document.getElementById('loginBtn');
 
+  const regUsername = document.getElementById('regUsername');
   const regName = document.getElementById('regName');
   const regEmail = document.getElementById('regEmail');
   const regPassword = document.getElementById('regPassword');
   const regDescription = document.getElementById('regDescription');
   const registerBtn = document.getElementById('registerBtn');
+  const usernameHint = document.getElementById('usernameHint');
 
   const verifyCode = document.getElementById('verifyCode');
   const verifyBtn = document.getElementById('verifyBtn');
@@ -562,7 +590,38 @@
   let allUsers = [];
   let chatListener = null;
   let verificationInterval = null;
-  let userDataCache = {};
+  let usernameAvailable = false;
+
+  // ----- ПРОВЕРКА ЮЗЕРНЕЙМА -----
+
+  regUsername.addEventListener('input', () => {
+    const username = regUsername.value.trim();
+    if (!username) {
+      usernameHint.textContent = 'Только латиница, цифры и _';
+      usernameHint.className = 'username-hint';
+      usernameAvailable = false;
+      return;
+    }
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      usernameHint.textContent = '❌ Только латиница, цифры и _';
+      usernameHint.className = 'username-hint taken';
+      usernameAvailable = false;
+      return;
+    }
+    // Проверяем уникальность в Firebase
+    const usersRef = db.ref('users');
+    usersRef.orderByChild('username').equalTo(username).once('value', (snap) => {
+      if (snap.exists()) {
+        usernameHint.textContent = '❌ Юзернейм уже занят';
+        usernameHint.className = 'username-hint taken';
+        usernameAvailable = false;
+      } else {
+        usernameHint.textContent = '✅ Доступен';
+        usernameHint.className = 'username-hint available';
+        usernameAvailable = true;
+      }
+    });
+  });
 
   // ----- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ -----
 
@@ -637,11 +696,15 @@
   });
 
   registerBtn.addEventListener('click', () => {
+    const username = regUsername.value.trim();
     const name = regName.value.trim();
     const email = regEmail.value.trim();
     const pass = regPassword.value.trim();
     const description = regDescription.value.trim();
 
+    if (!username) { showError('Введите юзернейм'); return; }
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) { showError('Юзернейм: только латиница, цифры и _'); return; }
+    if (!usernameAvailable) { showError('Юзернейм уже занят или не проверен'); return; }
     if (!name) { showError('Введите ваше имя'); return; }
     if (!email) { showError('Введите электронную почту'); return; }
     if (!pass) { showError('Введите пароль'); return; }
@@ -656,10 +719,11 @@
         registerBtn.disabled = false;
         registerBtn.textContent = 'Зарегистрироваться';
 
-        // Сохраняем имя и описание в базу данных
+        // Сохраняем данные пользователя с юзернеймом
         const uid = userCred.user.uid;
         const userRef = db.ref('users').child(uid);
         userRef.set({
+          username: username,
           name: name,
           email: email,
           description: description || '',
@@ -813,18 +877,18 @@
   // ----- ЧАТ -----
 
   function initChat(uid) {
-    // Загружаем данные пользователя
     const userRef = db.ref('users').child(uid);
     userRef.once('value', (snap) => {
       const data = snap.val();
       if (data) {
         currentUser = {
           uid: uid,
+          username: data.username || 'user',
           name: data.name || 'Пользователь',
           description: data.description || '',
           email: data.email || ''
         };
-        document.querySelector('.discard-brand span').textContent = 'Дискард (' + currentUser.name + ')';
+        document.querySelector('.discard-brand span').textContent = 'Дискард (@' + currentUser.username + ')';
         loadUsers();
         setupChatListeners();
       }
@@ -849,7 +913,10 @@
     let list = allUsers;
     if (filter.trim() !== '') {
       const f = filter.toLowerCase().trim();
-      list = list.filter(user => user.name.toLowerCase().includes(f));
+      list = list.filter(user => 
+        user.name.toLowerCase().includes(f) || 
+        user.username.toLowerCase().includes(f)
+      );
     }
     if (list.length === 0) {
       chatList.innerHTML = '<div class="empty-state" style="color:#6a6f78; padding:20px; text-align:center;">Никого не найдено</div>';
@@ -862,6 +929,7 @@
         <div class="avatar">${user.name.charAt(0).toUpperCase()}</div>
         <div class="chat-info">
           <div class="chat-name">${user.name}</div>
+          <div class="chat-username">@${user.username}</div>
           <div class="chat-desc">${user.description || 'Нет описания'}</div>
         </div>
         <span class="chat-time">●</span>
@@ -879,7 +947,7 @@
     const user = allUsers.find(u => u.uid === uid);
     if (user) {
       document.getElementById('headerName').textContent = user.name;
-      document.getElementById('headerDesc').textContent = user.description || '';
+      document.getElementById('headerUsername').textContent = '@' + user.username;
       document.getElementById('headerAvatar').textContent = user.name.charAt(0).toUpperCase();
     }
     
@@ -929,7 +997,13 @@
 
     const userSpan = document.createElement('div');
     userSpan.className = 'msg-user';
-    const senderName = isSelf ? currentUser.name : (allUsers.find(u => u.uid === data.sender)?.name || 'Аноним');
+    let senderName = 'Аноним';
+    if (isSelf) {
+      senderName = currentUser.name;
+    } else {
+      const sender = allUsers.find(u => u.uid === data.sender);
+      if (sender) senderName = sender.name;
+    }
     userSpan.innerText = senderName;
 
     const textSpan = document.createElement('div');
@@ -979,7 +1053,7 @@
     });
   }
 
-  console.log('🔥 Дискард с именем и описанием при регистрации');
+  console.log('🔥 Дискард с ручным вводом юзернейма');
 </script>
 </body>
 </html>
