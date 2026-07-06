@@ -289,6 +289,34 @@
         }
         .call-window .call-actions .close-btn:hover { background: #4e5058; color: #fff; }
 
+        /* ===== УВЕДОМЛЕНИЯ (TOAST) ===== */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2b2d31;
+            padding: 14px 28px;
+            border-radius: 16px;
+            color: #f2f3f5;
+            font-size: 15px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            display: none;
+            z-index: 4000;
+            border-left: 4px solid #5865f2;
+            max-width: 90%;
+            text-align: center;
+        }
+        .toast.show { display: block; animation: toastAnim 0.3s ease; }
+        .toast.error { border-left-color: #e74c3c; }
+        .toast.success { border-left-color: #2ecc71; }
+        .toast.info { border-left-color: #f1c40f; }
+
+        @keyframes toastAnim {
+            from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+
         /* ===== МОДАЛКА ВХОДЯЩЕГО ЗВОНКА ===== */
         .incoming-call {
             position: fixed;
@@ -406,6 +434,7 @@
             .modal { padding: 24px 20px; margin: 16px; }
             .call-window { max-width: 320px; padding: 28px 20px; }
             .incoming-call .call-box { padding: 24px 20px; }
+            .toast { font-size: 14px; padding: 12px 20px; }
         }
     </style>
 </head>
@@ -495,6 +524,9 @@
         </div>
     </div>
 </div>
+
+<!-- УВЕДОМЛЕНИЕ (TOAST) -->
+<div class="toast" id="toast"></div>
 
 <!-- МИНИ-ОКНО ЗВОНКА -->
 <div class="call-window" id="callWindow">
@@ -624,6 +656,9 @@
     var testOutputBtn = document.getElementById('testOutputBtn');
     var audioStatus = document.getElementById('audioStatus');
 
+    // УВЕДОМЛЕНИЯ
+    var toast = document.getElementById('toast');
+
     // МИНИ-ОКНО ЗВОНКА
     var callWindow = document.getElementById('callWindow');
     var callAvatar = document.getElementById('callAvatar');
@@ -657,21 +692,46 @@
     var servers = {
         iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' },
-            { 
-                urls: 'turn:turn.anyfirewall.com:443?transport=tcp',
-                username: 'webrtc',
-                credential: 'webrtc'
-            }
+            { urls: 'stun:stun1.l.google.com:19302' }
         ]
     };
 
+    // ====== УВЕДОМЛЕНИЯ ======
+    function showToast(message, type) {
+        if (type === undefined) type = 'info';
+        toast.textContent = message;
+        toast.className = 'toast show ' + type;
+        setTimeout(function() {
+            toast.className = 'toast';
+        }, 4000);
+    }
+
+    // Звук уведомления
+    function playNotificationSound() {
+        try {
+            var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            var oscillator = audioCtx.createOscillator();
+            var gainNode = audioCtx.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            oscillator.frequency.value = 800;
+            gainNode.gain.value = 0.2;
+            oscillator.start();
+            setTimeout(function() {
+                oscillator.frequency.value = 1000;
+            }, 200);
+            setTimeout(function() {
+                oscillator.stop();
+            }, 400);
+        } catch(e) {
+            console.log('Звук не поддерживается');
+        }
+    }
+
     // ====== ФУНКЦИИ ЗВОНКОВ ======
     function startCall() {
-        // ЖЁСТКАЯ ПРОВЕРКА
         if (!currentChat || currentChat === null || currentChat === 'null' || currentChat === undefined) {
-            audioStatus.textContent = '❌ Выберите собеседника';
-            console.warn('⚠️ ЗВОНОК: currentChat =', currentChat);
+            showToast('❌ Выберите собеседника', 'error');
             return;
         }
         if (isInCall) {
@@ -690,42 +750,44 @@
             if (currentChat === currentUser.uid) {
                 targetUser = currentUser;
             } else {
-                audioStatus.textContent = '❌ Пользователь не найден';
+                showToast('❌ Пользователь не найден', 'error');
                 return;
             }
         }
 
-        // Показываем мини-окно
+        // Если звоним себе — тестовый режим
+        if (currentChat === currentUser.uid) {
+            showToast('📞 Звоним себе! Проверка микрофона...', 'info');
+            startSelfTest(targetUser);
+            return;
+        }
+
+        // Обычный звонок
         showCallWindow(targetUser, 'ringing');
         isRinging = true;
         callStartTime = Date.now();
         startTimer('ringing');
 
-        audioStatus.textContent = '📞 Идёт вызов...';
-        console.log('📞 ЗВОНОК: Начинаем звонок для', currentChat);
-
         navigator.mediaDevices.getUserMedia({ audio: true, video: false })
             .then(function(stream) {
                 localStream = stream;
-                console.log('✅ ЗВОНОК: Микрофон получен');
                 var callData = {
                     from: currentUser.uid,
                     fromName: currentUser.name,
                     timestamp: Date.now()
                 };
-                // ПРОВЕРКА ПЕРЕД ЗАПИСЬЮ
                 if (!currentChat || currentChat === 'null') {
                     throw new Error('currentChat пустой!');
                 }
                 return db.ref('calls').child(currentChat).set(callData);
             })
             .then(function() {
-                console.log('✅ ЗВОНОК: Данные отправлены в Firebase');
-                
+                showToast('📞 Вызов отправлен...', 'info');
                 callTimeout = setTimeout(function() {
                     if (isRinging || isCallActive) {
                         callStatus.textContent = '⏰ Собеседник не отвечает';
                         callTimer.className = 'call-timer ended';
+                        showToast('⏰ Собеседник не отвечает', 'error');
                         endCall();
                     }
                 }, 30000);
@@ -733,12 +795,10 @@
                 var answerRef = db.ref('calls').child(currentChat).child('answer');
                 answerRef.on('value', function(snap) {
                     var data = snap.val();
-                    console.log('📞 ЗВОНОК: Получен ответ:', data);
                     if (data === 'accept') {
                         answerRef.off();
                         if (callTimeout) clearTimeout(callTimeout);
-                        audioStatus.textContent = '🔊 Звонок принят!';
-                        console.log('✅ ЗВОНОК: Собеседник принял');
+                        showToast('🔊 Звонок принят!', 'success');
                         isRinging = false;
                         isCallActive = true;
                         callStatus.textContent = '🔊 Разговор идёт...';
@@ -748,8 +808,7 @@
                     } else if (data === 'reject') {
                         answerRef.off();
                         if (callTimeout) clearTimeout(callTimeout);
-                        audioStatus.textContent = '❌ Звонок отклонён';
-                        console.log('❌ ЗВОНОК: Собеседник отклонил');
+                        showToast('❌ Звонок отклонён', 'error');
                         callStatus.textContent = '❌ Звонок отклонён';
                         callTimer.className = 'call-timer ended';
                         endCall();
@@ -757,26 +816,48 @@
                 });
             })
             .catch(function(err) {
-                audioStatus.textContent = '❌ Ошибка: ' + err.message;
-                console.error('❌ ЗВОНОК:', err);
-                callStatus.textContent = '❌ Ошибка: ' + err.message;
+                showToast('❌ Ошибка: ' + err.message, 'error');
+                endCall();
+            });
+    }
+
+    // ====== ТЕСТОВЫЙ РЕЖИМ (ЗВОНОК СЕБЕ) ======
+    function startSelfTest(user) {
+        showCallWindow(user, 'ringing');
+        isRinging = true;
+        callStatus.textContent = '🎤 Тест микрофона...';
+        callTimer.className = 'call-timer ringing';
+        callTimer.textContent = '00:00';
+
+        navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+            .then(function(stream) {
+                localStream = stream;
+                showToast('🎤 Микрофон работает! Говорите...', 'success');
+                callStatus.textContent = '🎤 Говорите...';
+                isCallActive = true;
+                callBtn.textContent = '🔴 Положить трубку';
+                callBtn.classList.add('in-call');
+                
+                // Просто держим микрофон открытым 30 секунд
+                callTimeout = setTimeout(function() {
+                    showToast('⏰ Тест завершён', 'info');
+                    endCall();
+                }, 30000);
+            })
+            .catch(function(err) {
+                showToast('❌ Ошибка микрофона: ' + err.message, 'error');
                 endCall();
             });
     }
 
     function startPeerConnection(isCaller) {
-        console.log('🔊 ЗВОНОК: Начинаем WebRTC, isCaller=', isCaller);
         if (peerConnection) {
             peerConnection.close();
             peerConnection = null;
         }
         peerConnection = new RTCPeerConnection(servers);
         
-        if (isCaller && localStream) {
-            localStream.getTracks().forEach(function(track) {
-                peerConnection.addTrack(track, localStream);
-            });
-        } else if (!isCaller && localStream) {
+        if (localStream) {
             localStream.getTracks().forEach(function(track) {
                 peerConnection.addTrack(track, localStream);
             });
@@ -784,7 +865,6 @@
 
         peerConnection.onicecandidate = function(event) {
             if (event.candidate) {
-                console.log('✅ ЗВОНОК: ICE кандидат отправлен');
                 db.ref('calls').child(currentChat).child('candidate').push().set({
                     candidate: event.candidate.candidate,
                     sdpMid: event.candidate.sdpMid,
@@ -798,13 +878,12 @@
             var audio = new Audio();
             audio.srcObject = remoteStream;
             audio.play();
-            audioStatus.textContent = '🔊 Разговор идёт...';
+            showToast('🔊 Разговор начат!', 'success');
+            callStatus.textContent = '🔊 Разговор идёт...';
             callBtn.textContent = '🔴 Положить трубку';
             callBtn.classList.add('in-call');
             isCallActive = true;
-            callStatus.textContent = '🔊 Разговор идёт...';
             callTimer.className = 'call-timer';
-            console.log('✅ ЗВОНОК: Трек получен, разговор начат');
         };
 
         if (isCaller) {
@@ -820,17 +899,16 @@
                     return db.ref('calls').child(currentChat).child('offer').set(offerData);
                 })
                 .then(function() {
-                    console.log('✅ ЗВОНОК: Offer отправлен');
+                    console.log('✅ Offer отправлен');
                 })
                 .catch(function(err) {
-                    console.error('❌ ЗВОНОК Ошибка offer:', err);
+                    console.error('❌ Ошибка offer:', err);
                 });
         } else {
             var offerRef = db.ref('calls').child(currentChat).child('offer');
             offerRef.on('value', function(snap) {
                 var data = snap.val();
                 if (data) {
-                    console.log('✅ ЗВОНОК: Получен Offer');
                     offerRef.off();
                     var desc = new RTCSessionDescription(data);
                     peerConnection.setRemoteDescription(desc)
@@ -856,10 +934,10 @@
                             return db.ref('calls').child(currentChat).child('offer').set(offerData);
                         })
                         .then(function() {
-                            console.log('✅ ЗВОНОК: Answer отправлен');
+                            console.log('✅ Answer отправлен');
                         })
                         .catch(function(err) {
-                            console.error('❌ ЗВОНОК Ошибка answer:', err);
+                            console.error('❌ Ошибка answer:', err);
                         });
                 }
             });
@@ -872,14 +950,14 @@
                 var candidate = new RTCIceCandidate(data);
                 peerConnection.addIceCandidate(candidate)
                     .catch(function(err) {
-                        console.error('❌ ЗВОНОК Ошибка ICE:', err);
+                        console.error('❌ Ошибка ICE:', err);
                     });
             }
         });
     }
 
     function endCall() {
-        console.log('📞 ЗВОНОК: Завершаем звонок');
+        console.log('📞 Завершаем звонок');
         isRinging = false;
         isCallActive = false;
         isIncomingCallActive = false;
@@ -907,10 +985,10 @@
         callReceiverUid = null;
         callBtn.textContent = '📞 Позвонить';
         callBtn.classList.remove('in-call');
-        audioStatus.textContent = '📞 Звонок завершён';
         if (currentChat) {
             db.ref('calls').child(currentChat).remove();
         }
+        closeCallWindow();
     }
 
     function showCallWindow(user, mode) {
@@ -947,11 +1025,14 @@
         }, 1000);
     }
 
-    callBtn.addEventListener('click', startCall);
+    callBtn.addEventListener('click', function() {
+        playNotificationSound();
+        startCall();
+    });
 
     hangupBtn.addEventListener('click', function() {
         endCall();
-        closeCallWindow();
+        showToast('📞 Звонок завершён', 'info');
     });
 
     closeCallBtn.addEventListener('click', function() {
@@ -967,39 +1048,24 @@
     // ====== СЛУШАЕМ ВХОДЯЩИЕ ЗВОНКИ ======
     function listenForCalls() {
         if (!currentUser) {
-            console.warn('⚠️ ЗВОНОК: Нет пользователя');
+            console.warn('⚠️ Нет пользователя');
             return;
         }
         var callsRef = db.ref('calls');
         callsRef.off();
-        console.log('📞 ЗВОНОК: Подписываемся на входящие');
+        console.log('📞 Подписываемся на входящие');
         callsRef.on('child_added', function(snap) {
             var data = snap.val();
             var callerUid = snap.key;
-            console.log('📞 ЗВОНОК: Новый звонок от', callerUid, data.fromName);
+            console.log('📞 Новый звонок от', callerUid, data.fromName);
             
             if (data.from === currentUser.uid) {
-                console.log('📞 ЗВОНОК: Звонок от себя, показываем окно');
-                var user = null;
-                for (var i = 0; i < allUsers.length; i++) {
-                    if (allUsers[i].uid === callerUid) {
-                        user = allUsers[i];
-                        break;
-                    }
-                }
-                if (!user && callerUid === currentUser.uid) {
-                    user = currentUser;
-                }
-                if (user) {
-                    showCallWindow(user, 'ringing');
-                    isRinging = true;
-                    isIncomingCallActive = true;
-                    callStartTime = Date.now();
-                    startTimer('ringing');
-                    callStatus.textContent = '📞 Звонок себе...';
-                }
+                console.log('📞 Звонок от себя');
                 return;
             }
+            
+            playNotificationSound();
+            showToast('📞 Входящий звонок от ' + (data.fromName || 'Неизвестного'), 'info');
             
             incomingCall.classList.add('show');
             callerName.textContent = data.fromName || 'Неизвестный';
@@ -1015,11 +1081,10 @@
     acceptCallBtn.addEventListener('click', function() {
         var callData = window._incomingCallData;
         if (!callData) {
-            console.warn('⚠️ ЗВОНОК: Нет данных о звонке');
+            console.warn('⚠️ Нет данных о звонке');
             return;
         }
         incomingCall.classList.remove('show');
-        console.log('📞 ЗВОНОК: Принимаем звонок от', callData.callerUid);
         currentChat = callData.callerUid;
         callReceiverUid = callData.callerUid;
         isIncomingCallActive = false;
@@ -1042,7 +1107,7 @@
             startTimer('call');
         }
         
-        audioStatus.textContent = '🔊 Звонок принят!';
+        showToast('🔊 Звонок принят!', 'success');
         db.ref('calls').child(currentChat).child('answer').set('accept');
         startPeerConnection(false);
         window._incomingCallData = null;
@@ -1052,13 +1117,12 @@
     rejectCallBtn.addEventListener('click', function() {
         var callData = window._incomingCallData;
         if (callData) {
-            console.log('📞 ЗВОНОК: Отклоняем звонок от', callData.callerUid);
             db.ref('calls').child(callData.callerUid).child('answer').set('reject');
+            showToast('❌ Звонок отклонён', 'error');
         }
         incomingCall.classList.remove('show');
         window._incomingCallData = null;
         isIncomingCallActive = false;
-        audioStatus.textContent = '❌ Звонок отклонён';
     });
 
     // ====== АУДИО ======
@@ -1106,6 +1170,7 @@
         navigator.mediaDevices.getUserMedia(constraints)
             .then(function(stream) {
                 audioStatus.textContent = '🎤 Микрофон работает!';
+                showToast('🎤 Микрофон работает!', 'success');
                 setTimeout(function() {
                     audioStatus.textContent = '✅ Микрофон проверен';
                     stream.getTracks().forEach(function(t) { t.stop(); });
@@ -1113,6 +1178,7 @@
             })
             .catch(function(err) {
                 audioStatus.textContent = '❌ Ошибка микрофона: ' + err.message;
+                showToast('❌ Ошибка микрофона: ' + err.message, 'error');
             });
     });
 
@@ -1127,12 +1193,14 @@
             gainNode.gain.value = 0.3;
             oscillator.start();
             audioStatus.textContent = '🔊 Динамики работают (440 Гц)';
+            showToast('🔊 Динамики работают!', 'success');
             setTimeout(function() {
                 oscillator.stop();
                 audioStatus.textContent = '✅ Динамики проверены';
             }, 1500);
         } catch (err) {
             audioStatus.textContent = '❌ Ошибка динамиков: ' + err.message;
+            showToast('❌ Ошибка динамиков: ' + err.message, 'error');
         }
     });
 
@@ -1212,6 +1280,7 @@
         app.style.display = 'flex';
         localStorage.setItem('discard_session_uid', uid);
         initChat(uid);
+        showToast('👋 Добро пожаловать!', 'success');
     }
 
     if (sessionUid) {
@@ -1328,9 +1397,9 @@
             chatListener = null;
         }
         endCall();
-        closeCallWindow();
         db.ref('calls').off();
         callBtn.style.display = 'none';
+        showToast('👋 Вы вышли', 'info');
     });
 
     // ====== ИНИЦИАЛИЗАЦИЯ ЧАТА ======
@@ -1655,6 +1724,7 @@
                     setTimeout(function() {
                         settingsSaved.style.display = 'none';
                     }, 3000);
+                    showToast('✅ Настройки сохранены', 'success');
                 })
                 .catch(function(err) {
                     settingsError.textContent = 'Ошибка: ' + err.message;
@@ -1662,11 +1732,12 @@
                     settingsSaved.style.display = 'none';
                     settingsSaveBtn.disabled = false;
                     settingsSaveBtn.textContent = 'Сохранить';
+                    showToast('❌ Ошибка сохранения', 'error');
                 });
         });
     }
 
-    console.log('🔥 Дискард — звонки работают правильно!');
+    console.log('🔥 Дискард с уведомлениями и тестом микрофона!');
 </script>
 </body>
 </html>
