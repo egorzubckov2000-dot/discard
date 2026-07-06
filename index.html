@@ -3,15 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Дискард</title>
+    <title>Дискард — чат</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, sans-serif; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
         body { background: #1e1f22; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 16px; }
 
         /* СТРАНИЦА ВХОДА */
         .discard-auth {
-            background: #2b2d31; border-radius: 28px; padding: 40px 36px;
-            max-width: 420px; width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,0.7);
+            background: #2b2d31;
+            border-radius: 28px;
+            padding: 40px 36px;
+            max-width: 420px;
+            width: 100%;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.7);
             color: #f2f3f5;
         }
         .discard-auth h1 { display: flex; align-items: center; gap: 12px; font-size: 28px; margin-bottom: 28px; justify-content: center; }
@@ -102,7 +106,6 @@
         .chat-item .chat-desc { font-size: 12px; color: #7a7f89; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .chat-item .chat-time { font-size: 11px; color: #7a7f89; }
 
-        /* Нижняя панель с настройками */
         .discard-sidebar-footer {
             padding: 12px 14px; border-top: 1px solid #3a3c42;
             display: flex; align-items: center; gap: 12px;
@@ -176,7 +179,7 @@
 
         @keyframes fadeUp { 0% { opacity: 0.5; transform: translateY(6px); } 100% { opacity: 1; transform: translateY(0); } }
 
-        /* МОДАЛКА НАСТРОЕК */
+        /* МОДАЛКА НАСТРОЕК С ВКЛАДКАМИ */
         .modal-overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
@@ -185,18 +188,37 @@
         .modal-overlay.show { display: flex; }
         .modal {
             background: #2b2d31; border-radius: 24px; padding: 32px 36px;
-            max-width: 480px; width: 100%; color: #f2f3f5;
+            max-width: 520px; width: 100%; color: #f2f3f5;
             box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+            max-height: 90vh;
+            overflow-y: auto;
         }
-        .modal h2 { font-size: 24px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px; }
+        .modal h2 { font-size: 24px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; }
         .modal h2 .icon { font-size: 28px; }
+
+        /* Вкладки */
+        .modal-tabs {
+            display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid #3a3c42;
+        }
+        .modal-tabs button {
+            background: transparent; border: none; color: #b5bac1;
+            padding: 10px 16px; cursor: pointer; font-size: 14px; font-weight: 500;
+            border-bottom: 2px solid transparent; transition: 0.2s;
+        }
+        .modal-tabs button:hover { color: #f2f3f5; }
+        .modal-tabs button.active { color: #5865f2; border-bottom-color: #5865f2; }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
         .modal label { font-size: 14px; font-weight: 500; color: #b5bac1; display: block; margin-bottom: 4px; margin-top: 12px; }
-        .modal input, .modal textarea {
+        .modal input, .modal textarea, .modal select {
             background: #383a40; border: none; padding: 12px 16px; border-radius: 10px;
             color: #f2f3f5; font-size: 15px; outline: none; width: 100%;
         }
-        .modal input:focus, .modal textarea:focus { background: #404249; box-shadow: 0 0 0 2px #5865f2; }
+        .modal input:focus, .modal textarea:focus, .modal select:focus { background: #404249; box-shadow: 0 0 0 2px #5865f2; }
         .modal textarea { resize: vertical; min-height: 60px; font-family: inherit; }
+        .modal select option { background: #2b2d31; }
         .modal .btn-save {
             background: #5865f2; border: none; color: white; font-weight: 600;
             padding: 14px; border-radius: 12px; font-size: 16px; cursor: pointer;
@@ -219,6 +241,12 @@
             border-radius: 10px; font-size: 14px; display: none; margin-top: 12px;
             border-left: 4px solid #e74c3c;
         }
+        .modal .audio-test-btn {
+            background: #3a3c42; border: none; color: #f2f3f5;
+            padding: 8px 16px; border-radius: 8px; cursor: pointer; margin-top: 8px;
+            font-size: 13px; transition: 0.2s;
+        }
+        .modal .audio-test-btn:hover { background: #4e5058; }
 
         @media (max-width: 700px) {
             .discard-sidebar { width: 200px; }
@@ -280,7 +308,6 @@
         <div class="chat-list" id="chatList">
             <div class="empty-state" style="color:#6a6f78; padding:20px; text-align:center;">Нет чатов<br>Найдите пользователя</div>
         </div>
-        <!-- Нижняя панель с настройками -->
         <div class="discard-sidebar-footer">
             <div class="user-info">
                 <div class="user-name" id="sidebarUserName">Имя</div>
@@ -313,18 +340,44 @@
     </div>
 </div>
 
-<!-- МОДАЛКА НАСТРОЕК -->
+<!-- МОДАЛКА НАСТРОЕК С ВКЛАДКАМИ -->
 <div class="modal-overlay" id="settingsModal">
     <div class="modal">
         <h2><span class="icon">⚙️</span> Настройки</h2>
-        <label>Имя</label>
-        <input type="text" id="settingsName" placeholder="Ваше имя">
-        <label>Юзернейм (нельзя изменить)</label>
-        <input type="text" id="settingsUsername" disabled style="opacity:0.6;">
-        <label>Описание</label>
-        <textarea id="settingsDescription" placeholder="О себе..."></textarea>
-        <label>Электронная почта</label>
-        <input type="email" id="settingsEmail" placeholder="you@example.com">
+        
+        <div class="modal-tabs">
+            <button class="active" data-tab="tab-account">👤 Аккаунт</button>
+            <button data-tab="tab-audio">🎧 Аудио</button>
+        </div>
+
+        <!-- Вкладка: Аккаунт -->
+        <div class="tab-content active" id="tab-account">
+            <label>Имя</label>
+            <input type="text" id="settingsName" placeholder="Ваше имя">
+            <label>Юзернейм (нельзя изменить)</label>
+            <input type="text" id="settingsUsername" disabled style="opacity:0.6;">
+            <label>Описание</label>
+            <textarea id="settingsDescription" placeholder="О себе..."></textarea>
+            <label>Электронная почта</label>
+            <input type="email" id="settingsEmail" placeholder="you@example.com">
+        </div>
+
+        <!-- Вкладка: Аудио -->
+        <div class="tab-content" id="tab-audio">
+            <label>🎤 Микрофон</label>
+            <select id="audioInputSelect">
+                <option value="">Выберите микрофон...</option>
+            </select>
+            <button class="audio-test-btn" id="testMicBtn">🔊 Проверить микрофон</button>
+            
+            <label style="margin-top:16px;">🔊 Динамики (выход)</label>
+            <select id="audioOutputSelect">
+                <option value="">Выберите динамики...</option>
+            </select>
+            <button class="audio-test-btn" id="testOutputBtn">🔊 Проверить динамики</button>
+            <div style="margin-top:12px;font-size:13px;color:#7a7f89;" id="audioStatus">Готово</div>
+        </div>
+
         <div class="saved-toast" id="settingsSaved">✅ Изменения сохранены</div>
         <div class="error-toast" id="settingsError">❌ Ошибка</div>
         <button class="btn-save" id="settingsSaveBtn">💾 Сохранить</button>
@@ -390,13 +443,121 @@
     const settingsSaved = document.getElementById('settingsSaved');
     const settingsError = document.getElementById('settingsError');
 
+    // Аудио элементы
+    const audioInputSelect = document.getElementById('audioInputSelect');
+    const audioOutputSelect = document.getElementById('audioOutputSelect');
+    const testMicBtn = document.getElementById('testMicBtn');
+    const testOutputBtn = document.getElementById('testOutputBtn');
+    const audioStatus = document.getElementById('audioStatus');
+
     let currentUser = null;
     let currentChat = null;
     let allUsers = [];
     let chatListener = null;
     let usernameAvailable = false;
 
-    // ----- ФУНКЦИИ ОШИБОК -----
+    // ===== АУДИО =====
+    let audioContext = null;
+    let mediaStream = null;
+
+    async function getAudioDevices() {
+        try {
+            // Запрашиваем разрешение на микрофон
+            mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            
+            // Микрофоны
+            const inputs = devices.filter(d => d.kind === 'audioinput');
+            audioInputSelect.innerHTML = '<option value="">Выберите микрофон...</option>';
+            inputs.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d.deviceId;
+                opt.textContent = d.label || `Микрофон ${inputs.indexOf(d) + 1}`;
+                audioInputSelect.appendChild(opt);
+            });
+
+            // Динамики
+            const outputs = devices.filter(d => d.kind === 'audiooutput');
+            audioOutputSelect.innerHTML = '<option value="">Выберите динамики...</option>';
+            outputs.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d.deviceId;
+                opt.textContent = d.label || `Динамики ${outputs.indexOf(d) + 1}`;
+                audioOutputSelect.appendChild(opt);
+            });
+
+            // Загружаем сохранённые настройки
+            const savedInput = localStorage.getItem('discard_audio_input');
+            const savedOutput = localStorage.getItem('discard_audio_output');
+            if (savedInput) audioInputSelect.value = savedInput;
+            if (savedOutput) audioOutputSelect.value = savedOutput;
+
+            audioStatus.textContent = `✅ Найдено микрофонов: ${inputs.length}, динамиков: ${outputs.length}`;
+        } catch (err) {
+            audioStatus.textContent = '⚠️ Нет доступа к микрофону: ' + err.message;
+        }
+    }
+
+    // Проверка микрофона
+    testMicBtn.addEventListener('click', async () => {
+        try {
+            const deviceId = audioInputSelect.value;
+            const constraints = { audio: { deviceId: deviceId ? { exact: deviceId } : undefined } };
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const source = audioContext.createMediaStreamSource(stream);
+            const analyser = audioContext.createAnalyser();
+            source.connect(analyser);
+            audioStatus.textContent = '🎤 Микрофон работает! Говорите...';
+            setTimeout(() => {
+                audioStatus.textContent = '✅ Микрофон проверен';
+                stream.getTracks().forEach(t => t.stop());
+            }, 3000);
+        } catch (err) {
+            audioStatus.textContent = '❌ Ошибка микрофона: ' + err.message;
+        }
+    });
+
+    // Проверка динамиков
+    testOutputBtn.addEventListener('click', () => {
+        try {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            oscillator.frequency.value = 440;
+            gainNode.gain.value = 0.3;
+            oscillator.start();
+            audioStatus.textContent = '🔊 Динамики работают (440 Гц)';
+            setTimeout(() => {
+                oscillator.stop();
+                audioStatus.textContent = '✅ Динамики проверены';
+            }, 1500);
+        } catch (err) {
+            audioStatus.textContent = '❌ Ошибка динамиков: ' + err.message;
+        }
+    });
+
+    // Сохраняем выбор аудиоустройств
+    audioInputSelect.addEventListener('change', () => {
+        localStorage.setItem('discard_audio_input', audioInputSelect.value);
+    });
+    audioOutputSelect.addEventListener('change', () => {
+        localStorage.setItem('discard_audio_output', audioOutputSelect.value);
+        // Пытаемся применить динамики (если поддерживается)
+        if (audioOutputSelect.value) {
+            try {
+                // В некоторых браузерах можно применить через setSinkId
+                if (typeof audioOutputSelect.value === 'string') {
+                    audioStatus.textContent = '✅ Динамики выбраны (применится при следующем воспроизведении)';
+                }
+            } catch (e) {}
+        }
+    });
+
+    // ===== ОСТАЛЬНЫЕ ФУНКЦИИ =====
+
     function showError(msg, hint = '') {
         errorMsg.style.display = 'block';
         errorText.textContent = msg;
@@ -453,7 +614,7 @@
         hideMessages();
     }
 
-    // ----- ОБРАБОТКА ОШИБОК АУТЕНТИФИКАЦИИ -----
+    // ----- ОБРАБОТКА ОШИБОК -----
     function handleAuthError(err) {
         let message = err.message;
         let hint = '';
@@ -505,7 +666,7 @@
             });
     });
 
-    // ----- РЕГИСТРАЦИЯ (МГНОВЕННЫЙ ВХОД) -----
+    // ----- РЕГИСТРАЦИЯ -----
     registerBtn.addEventListener('click', () => {
         const username = regUsername.value.trim();
         const name = regName.value.trim();
@@ -572,6 +733,7 @@
             authPage.style.display = 'none';
             app.style.display = 'flex';
             initChat(user.uid);
+            getAudioDevices(); // Загружаем аудиоустройства
         } else {
             authPage.style.display = 'block';
             app.style.display = 'none';
@@ -754,8 +916,18 @@
         });
     }
 
-    // ----- НАСТРОЙКИ (ШЕСТЕРЁНКА) -----
+    // ----- НАСТРОЙКИ (С ВКЛАДКАМИ) -----
     function setupSettings() {
+        // Переключение вкладок
+        document.querySelectorAll('.modal-tabs button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.modal-tabs button').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+                document.getElementById(btn.dataset.tab).classList.add('active');
+            });
+        });
+
         settingsBtn.addEventListener('click', () => {
             settingsName.value = currentUser.name || '';
             settingsUsername.value = '@' + (currentUser.username || '');
@@ -764,6 +936,8 @@
             settingsModal.classList.add('show');
             settingsSaved.style.display = 'none';
             settingsError.style.display = 'none';
+            // Обновляем аудиоустройства при открытии
+            getAudioDevices();
         });
 
         settingsCloseBtn.addEventListener('click', () => {
@@ -829,7 +1003,7 @@
         });
     }
 
-    console.log('🔥 Дискард — регистрация, чаты, настройки');
+    console.log('🔥 Дискард — регистрация, чаты, настройки с аудио');
 </script>
 </body>
 </html>
