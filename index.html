@@ -1,552 +1,335 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Дискард — вход</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, sans-serif; }
-    body { 
-      background: #1e1f22; 
-      display: flex; 
-      justify-content: center; 
-      align-items: center; 
-      min-height: 100vh; 
-      padding: 16px;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Дискард</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, sans-serif; }
+        body { background: #1e1f22; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 16px; }
 
-    .discard-auth {
-      background: #2b2d31;
-      border-radius: 28px;
-      padding: 40px 36px;
-      max-width: 420px;
-      width: 100%;
-      box-shadow: 0 12px 40px rgba(0,0,0,0.7);
-      color: #f2f3f5;
-    }
+        /* СТРАНИЦА ВХОДА */
+        .discard-auth {
+            background: #2b2d31; border-radius: 28px; padding: 40px 36px;
+            max-width: 420px; width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,0.7);
+            color: #f2f3f5;
+        }
+        .discard-auth h1 { display: flex; align-items: center; gap: 12px; font-size: 28px; margin-bottom: 28px; justify-content: center; }
+        .discard-auth h1 .icon { background: #5865f2; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 26px; color: white; }
+        .auth-form { display: flex; flex-direction: column; gap: 16px; }
+        .auth-form label { font-size: 14px; font-weight: 500; color: #b5bac1; margin-bottom: 4px; }
+        .auth-form label .optional { color: #7a7f89; font-weight: 400; font-size: 12px; }
+        .auth-form label .required { color: #e74c3c; }
+        .auth-form input, .auth-form textarea {
+            background: #383a40; border: none; padding: 14px 16px; border-radius: 12px;
+            color: #f2f3f5; font-size: 15px; outline: none; width: 100%;
+        }
+        .auth-form input::placeholder, .auth-form textarea::placeholder { color: #7a7f89; }
+        .auth-form input:focus, .auth-form textarea:focus { background: #404249; box-shadow: 0 0 0 2px #5865f2; }
+        .auth-form textarea { resize: vertical; min-height: 60px; max-height: 120px; font-family: inherit; }
+        .auth-form .username-hint { font-size: 12px; color: #7a7f89; margin-top: -8px; }
+        .auth-form .username-hint.taken { color: #e74c3c; }
+        .auth-form .username-hint.available { color: #2ecc71; }
+        .auth-form .btn {
+            background: #5865f2; border: none; color: white; font-weight: 600; padding: 14px;
+            border-radius: 12px; font-size: 16px; cursor: pointer; transition: 0.15s; margin-top: 6px;
+        }
+        .auth-form .btn:hover { background: #4752c4; }
+        .auth-form .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .auth-form .switch { text-align: center; margin-top: 12px; color: #b5bac1; font-size: 14px; }
+        .auth-form .switch a { color: #7289da; cursor: pointer; text-decoration: none; font-weight: 500; }
+        .auth-form .switch a:hover { text-decoration: underline; }
+        .auth-form .error-msg {
+            background: #4a2a2a; color: #f5a3a3; padding: 10px 14px; border-radius: 10px;
+            font-size: 14px; display: none; border-left: 4px solid #e74c3c;
+        }
+        .auth-form .error-msg .hint { display: block; margin-top: 6px; font-size: 13px; color: #f5a3a3; }
+        .auth-form .error-msg .hint a { color: #7289da; cursor: pointer; text-decoration: underline; }
+        .auth-form .success-msg {
+            background: #1e4a3a; color: #a3e0c0; padding: 10px 14px; border-radius: 10px;
+            font-size: 14px; display: none; border-left: 4px solid #2ecc71;
+        }
+        .hidden { display: none !important; }
 
-    .discard-auth h1 {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      font-size: 28px;
-      margin-bottom: 28px;
-      justify-content: center;
-    }
-    .discard-auth h1 .icon {
-      background: #5865f2;
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 26px;
-      color: white;
-    }
+        /* ОСНОВНОЙ ЧАТ */
+        #app {
+            display: none; width: 1100px; max-width: 100%; height: 750px;
+            background: #2b2d31; border-radius: 28px; overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,0.7);
+        }
 
-    .auth-form {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
+        .discard-sidebar {
+            width: 280px; background: #1e1f22; display: flex; flex-direction: column;
+            border-right: 1px solid #3a3c42; flex-shrink: 0;
+        }
+        .discard-sidebar-header {
+            padding: 16px 14px 10px 14px; border-bottom: 1px solid #3a3c42;
+            display: flex; flex-direction: column; gap: 10px;
+        }
+        .discard-brand {
+            display: flex; align-items: center; gap: 10px; color: #f2f3f5;
+            font-size: 20px; font-weight: 700;
+        }
+        .discard-brand .icon {
+            background: #5865f2; width: 38px; height: 38px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; font-size: 22px; color: white;
+        }
+        .discard-search {
+            background: #383a40; border: none; border-radius: 30px; padding: 10px 16px;
+            color: #f2f3f5; font-size: 14px; outline: none; width: 100%;
+        }
+        .discard-search::placeholder { color: #7a7f89; }
+        .discard-search:focus { background: #404249; box-shadow: 0 0 0 2px #5865f2; }
 
-    .auth-form label {
-      font-size: 14px;
-      font-weight: 500;
-      color: #b5bac1;
-      margin-bottom: 4px;
-    }
-    .auth-form label .optional {
-      color: #7a7f89;
-      font-weight: 400;
-      font-size: 12px;
-    }
-    .auth-form label .required {
-      color: #e74c3c;
-    }
+        .chat-list {
+            flex: 1; overflow-y: auto; padding: 10px 8px;
+        }
+        .chat-list::-webkit-scrollbar { width: 4px; }
+        .chat-list::-webkit-scrollbar-thumb { background: #4e5058; border-radius: 10px; }
+        .chat-item {
+            display: flex; align-items: center; gap: 12px; padding: 10px 14px;
+            border-radius: 14px; color: #dbdee1; cursor: pointer; transition: 0.15s; margin-bottom: 2px;
+        }
+        .chat-item:hover { background: #383a40; }
+        .chat-item.active { background: #404249; }
+        .chat-item .avatar {
+            width: 36px; height: 36px; border-radius: 50%; background: #5865f2;
+            display: flex; align-items: center; justify-content: center; font-weight: 600;
+            color: #fff; font-size: 16px; flex-shrink: 0;
+        }
+        .chat-item .chat-info { flex: 1; min-width: 0; }
+        .chat-item .chat-name { font-weight: 500; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .chat-item .chat-username { font-size: 12px; color: #7a7f89; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .chat-item .chat-desc { font-size: 12px; color: #7a7f89; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .chat-item .chat-time { font-size: 11px; color: #7a7f89; }
 
-    .auth-form input, .auth-form textarea {
-      background: #383a40;
-      border: none;
-      padding: 14px 16px;
-      border-radius: 12px;
-      color: #f2f3f5;
-      font-size: 15px;
-      outline: none;
-      transition: 0.2s;
-      width: 100%;
-    }
-    .auth-form input::placeholder, .auth-form textarea::placeholder { color: #7a7f89; }
-    .auth-form input:focus, .auth-form textarea:focus { background: #404249; box-shadow: 0 0 0 2px #5865f2; }
-    .auth-form textarea {
-      resize: vertical;
-      min-height: 60px;
-      max-height: 120px;
-      font-family: inherit;
-    }
+        /* Нижняя панель с настройками */
+        .discard-sidebar-footer {
+            padding: 12px 14px; border-top: 1px solid #3a3c42;
+            display: flex; align-items: center; gap: 12px;
+        }
+        .discard-sidebar-footer .user-info { flex: 1; min-width: 0; }
+        .discard-sidebar-footer .user-name { font-weight: 500; font-size: 14px; color: #f2f3f5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .discard-sidebar-footer .user-username { font-size: 12px; color: #7a7f89; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .discard-sidebar-footer .settings-btn {
+            background: #383a40; border: none; color: #b5bac1;
+            width: 36px; height: 36px; border-radius: 50%;
+            font-size: 18px; cursor: pointer; transition: 0.2s;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .discard-sidebar-footer .settings-btn:hover { background: #4e5058; color: #fff; }
 
-    .auth-form .username-hint {
-      font-size: 12px;
-      color: #7a7f89;
-      margin-top: -8px;
-    }
-    .auth-form .username-hint .taken {
-      color: #e74c3c;
-    }
-    .auth-form .username-hint .available {
-      color: #2ecc71;
-    }
+        .discard-chat-window { flex: 1; display: flex; flex-direction: column; background: #2b2d31; }
+        .chat-header {
+            padding: 14px 20px; border-bottom: 1px solid #3a3c42; color: #f2f3f5;
+            font-size: 18px; font-weight: 600; background: #1e1f22;
+            display: flex; align-items: center; gap: 12px; justify-content: space-between;
+        }
+        .chat-header .left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+        .chat-header .avatar-small {
+            width: 32px; height: 32px; border-radius: 50%; background: #5865f2;
+            display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 600;
+        }
+        .chat-header .chat-header-info { min-width: 0; }
+        .chat-header .chat-header-name { font-size: 18px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .chat-header .chat-header-username { font-size: 13px; font-weight: 400; color: #7a7f89; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .chat-header .logout-btn {
+            background: #3a3c42; border: none; color: #b5bac1;
+            padding: 6px 14px; border-radius: 20px; font-size: 13px; cursor: pointer; transition: 0.2s;
+        }
+        .chat-header .logout-btn:hover { background: #4e5058; color: #fff; }
 
-    .auth-form .btn {
-      background: #5865f2;
-      border: none;
-      color: white;
-      font-weight: 600;
-      padding: 14px;
-      border-radius: 12px;
-      font-size: 16px;
-      cursor: pointer;
-      transition: 0.15s;
-      margin-top: 6px;
-    }
-    .auth-form .btn:hover { background: #4752c4; transform: scale(0.98); }
-    .auth-form .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .discard-chat {
+            flex: 1; overflow-y: auto; padding: 20px 20px 12px;
+            display: flex; flex-direction: column; gap: 6px; background: #2b2d31;
+        }
+        .discard-chat::-webkit-scrollbar { width: 6px; }
+        .discard-chat::-webkit-scrollbar-thumb { background: #4e5058; border-radius: 10px; }
+        .message {
+            display: flex; flex-direction: column; max-width: 82%;
+            padding: 10px 16px; border-radius: 18px; background: #383a40;
+            color: #dbdee1; font-size: 15px; line-height: 1.5; word-wrap: break-word;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2); animation: fadeUp 0.12s ease;
+        }
+        .message.self { align-self: flex-end; background: #5865f2; color: #fff; border-bottom-right-radius: 6px; }
+        .message.other { align-self: flex-start; background: #383a40; border-bottom-left-radius: 6px; }
+        .message .msg-user { font-weight: 600; font-size: 13px; color: #b5bac1; margin-bottom: 2px; }
+        .message.self .msg-user { color: #c8ccff; }
+        .message .msg-time { font-size: 10px; color: #949ba4; margin-top: 4px; align-self: flex-end; }
+        .message.self .msg-time { color: #b9bdff; }
 
-    .auth-form .switch {
-      text-align: center;
-      margin-top: 12px;
-      color: #b5bac1;
-      font-size: 14px;
-    }
-    .auth-form .switch a {
-      color: #7289da;
-      cursor: pointer;
-      text-decoration: none;
-      font-weight: 500;
-    }
-    .auth-form .switch a:hover { text-decoration: underline; }
+        .discard-footer {
+            background: #1e1f22; padding: 12px 18px 18px; border-top: 1px solid #3a3c42;
+            display: flex; gap: 12px; align-items: center;
+        }
+        .discard-footer input {
+            flex: 1; background: #383a40; border: none; padding: 12px 18px;
+            border-radius: 40px; color: #f2f3f5; font-size: 15px; outline: none;
+        }
+        .discard-footer input::placeholder { color: #7a7f89; }
+        .discard-footer input:focus { background: #404249; box-shadow: 0 0 0 2px #5865f2; }
+        .discard-footer button {
+            background: #5865f2; border: none; color: white; font-weight: 600;
+            padding: 12px 22px; border-radius: 40px; font-size: 15px; cursor: pointer; transition: 0.15s;
+        }
+        .discard-footer button:hover { background: #4752c4; }
+        .empty-state { color: #6a6f78; text-align: center; margin-top: 40px; font-size: 15px; }
 
-    .auth-form .error-msg {
-      background: #4a2a2a;
-      color: #f5a3a3;
-      padding: 10px 14px;
-      border-radius: 10px;
-      font-size: 14px;
-      display: none;
-      border-left: 4px solid #e74c3c;
-    }
+        @keyframes fadeUp { 0% { opacity: 0.5; transform: translateY(6px); } 100% { opacity: 1; transform: translateY(0); } }
 
-    .auth-form .error-msg .hint {
-      display: block;
-      margin-top: 6px;
-      font-size: 13px;
-      color: #f5a3a3;
-    }
-    .auth-form .error-msg .hint a {
-      color: #7289da;
-      cursor: pointer;
-      text-decoration: underline;
-    }
+        /* МОДАЛКА НАСТРОЕК */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+            display: none; justify-content: center; align-items: center; z-index: 1000;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal {
+            background: #2b2d31; border-radius: 24px; padding: 32px 36px;
+            max-width: 480px; width: 100%; color: #f2f3f5;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+        }
+        .modal h2 { font-size: 24px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px; }
+        .modal h2 .icon { font-size: 28px; }
+        .modal label { font-size: 14px; font-weight: 500; color: #b5bac1; display: block; margin-bottom: 4px; margin-top: 12px; }
+        .modal input, .modal textarea {
+            background: #383a40; border: none; padding: 12px 16px; border-radius: 10px;
+            color: #f2f3f5; font-size: 15px; outline: none; width: 100%;
+        }
+        .modal input:focus, .modal textarea:focus { background: #404249; box-shadow: 0 0 0 2px #5865f2; }
+        .modal textarea { resize: vertical; min-height: 60px; font-family: inherit; }
+        .modal .btn-save {
+            background: #5865f2; border: none; color: white; font-weight: 600;
+            padding: 14px; border-radius: 12px; font-size: 16px; cursor: pointer;
+            width: 100%; margin-top: 20px; transition: 0.15s;
+        }
+        .modal .btn-save:hover { background: #4752c4; }
+        .modal .btn-close {
+            background: #3a3c42; border: none; color: #b5bac1;
+            padding: 10px; border-radius: 10px; cursor: pointer; width: 100%; margin-top: 8px;
+            font-size: 14px; transition: 0.15s;
+        }
+        .modal .btn-close:hover { background: #4e5058; color: #fff; }
+        .modal .saved-toast {
+            background: #1e4a3a; color: #a3e0c0; padding: 10px 14px;
+            border-radius: 10px; font-size: 14px; display: none; margin-top: 12px;
+            border-left: 4px solid #2ecc71;
+        }
+        .modal .error-toast {
+            background: #4a2a2a; color: #f5a3a3; padding: 10px 14px;
+            border-radius: 10px; font-size: 14px; display: none; margin-top: 12px;
+            border-left: 4px solid #e74c3c;
+        }
 
-    .auth-form .success-msg {
-      background: #1e4a3a;
-      color: #a3e0c0;
-      padding: 10px 14px;
-      border-radius: 10px;
-      font-size: 14px;
-      display: none;
-      border-left: 4px solid #2ecc71;
-    }
-
-    .hidden { display: none !important; }
-
-    #app {
-      display: none;
-      width: 1100px;
-      max-width: 100%;
-      height: 750px;
-      background: #2b2d31;
-      border-radius: 28px;
-      overflow: hidden;
-      box-shadow: 0 12px 40px rgba(0,0,0,0.7);
-    }
-
-    .discard-sidebar {
-      width: 280px;
-      background: #1e1f22;
-      display: flex;
-      flex-direction: column;
-      border-right: 1px solid #3a3c42;
-      flex-shrink: 0;
-    }
-    .discard-sidebar-header {
-      padding: 16px 14px 10px 14px;
-      border-bottom: 1px solid #3a3c42;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    .discard-brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      color: #f2f3f5;
-      font-size: 20px;
-      font-weight: 700;
-    }
-    .discard-brand .icon {
-      background: #5865f2;
-      width: 38px;
-      height: 38px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 22px;
-      color: white;
-      flex-shrink: 0;
-    }
-    .discard-search {
-      background: #383a40;
-      border: none;
-      border-radius: 30px;
-      padding: 10px 16px;
-      color: #f2f3f5;
-      font-size: 14px;
-      outline: none;
-      width: 100%;
-      transition: 0.2s;
-    }
-    .discard-search::placeholder { color: #7a7f89; }
-    .discard-search:focus { background: #404249; box-shadow: 0 0 0 2px #5865f2; }
-    .chat-list {
-      flex: 1;
-      overflow-y: auto;
-      padding: 10px 8px;
-    }
-    .chat-list::-webkit-scrollbar { width: 4px; }
-    .chat-list::-webkit-scrollbar-thumb { background: #4e5058; border-radius: 10px; }
-    .chat-item {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 10px 14px;
-      border-radius: 14px;
-      color: #dbdee1;
-      cursor: pointer;
-      transition: 0.15s;
-      margin-bottom: 2px;
-    }
-    .chat-item:hover { background: #383a40; }
-    .chat-item.active { background: #404249; }
-    .chat-item .avatar {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      background: #5865f2;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 600;
-      color: #fff;
-      font-size: 16px;
-      flex-shrink: 0;
-    }
-    .chat-item .chat-info {
-      flex: 1;
-      min-width: 0;
-    }
-    .chat-item .chat-name {
-      font-weight: 500;
-      font-size: 15px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .chat-item .chat-username {
-      font-size: 12px;
-      color: #7a7f89;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .chat-item .chat-desc {
-      font-size: 12px;
-      color: #7a7f89;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .chat-item .chat-time {
-      font-size: 11px;
-      color: #7a7f89;
-    }
-    .discard-chat-window {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      background: #2b2d31;
-    }
-    .chat-header {
-      padding: 14px 20px;
-      border-bottom: 1px solid #3a3c42;
-      color: #f2f3f5;
-      font-size: 18px;
-      font-weight: 600;
-      background: #1e1f22;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      justify-content: space-between;
-    }
-    .chat-header .left {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      min-width: 0;
-    }
-    .chat-header .avatar-small {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      background: #5865f2;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #fff;
-      font-weight: 600;
-      flex-shrink: 0;
-    }
-    .chat-header .chat-header-info {
-      min-width: 0;
-    }
-    .chat-header .chat-header-name {
-      font-size: 18px;
-      font-weight: 600;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .chat-header .chat-header-username {
-      font-size: 13px;
-      font-weight: 400;
-      color: #7a7f89;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .chat-header .logout-btn {
-      background: #3a3c42;
-      border: none;
-      color: #b5bac1;
-      padding: 6px 14px;
-      border-radius: 20px;
-      font-size: 13px;
-      cursor: pointer;
-      transition: 0.2s;
-      flex-shrink: 0;
-    }
-    .chat-header .logout-btn:hover { background: #4e5058; color: #fff; }
-    .discard-chat {
-      flex: 1;
-      overflow-y: auto;
-      padding: 20px 20px 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      background: #2b2d31;
-    }
-    .discard-chat::-webkit-scrollbar { width: 6px; }
-    .discard-chat::-webkit-scrollbar-thumb { background: #4e5058; border-radius: 10px; }
-    .message {
-      display: flex;
-      flex-direction: column;
-      max-width: 82%;
-      padding: 10px 16px;
-      border-radius: 18px;
-      background: #383a40;
-      color: #dbdee1;
-      font-size: 15px;
-      line-height: 1.5;
-      word-wrap: break-word;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-      animation: fadeUp 0.12s ease;
-    }
-    .message.self {
-      align-self: flex-end;
-      background: #5865f2;
-      color: #fff;
-      border-bottom-right-radius: 6px;
-    }
-    .message.other {
-      align-self: flex-start;
-      background: #383a40;
-      border-bottom-left-radius: 6px;
-    }
-    .message .msg-user {
-      font-weight: 600;
-      font-size: 13px;
-      color: #b5bac1;
-      margin-bottom: 2px;
-    }
-    .message.self .msg-user { color: #c8ccff; }
-    .message .msg-time {
-      font-size: 10px;
-      color: #949ba4;
-      margin-top: 4px;
-      align-self: flex-end;
-    }
-    .message.self .msg-time { color: #b9bdff; }
-    .discard-footer {
-      background: #1e1f22;
-      padding: 12px 18px 18px;
-      border-top: 1px solid #3a3c42;
-      display: flex;
-      gap: 12px;
-      align-items: center;
-    }
-    .discard-footer input {
-      flex: 1;
-      background: #383a40;
-      border: none;
-      padding: 12px 18px;
-      border-radius: 40px;
-      color: #f2f3f5;
-      font-size: 15px;
-      outline: none;
-      transition: 0.2s;
-    }
-    .discard-footer input::placeholder { color: #7a7f89; }
-    .discard-footer input:focus { background: #404249; box-shadow: 0 0 0 2px #5865f2; }
-    .discard-footer button {
-      background: #5865f2;
-      border: none;
-      color: white;
-      font-weight: 600;
-      padding: 12px 22px;
-      border-radius: 40px;
-      font-size: 15px;
-      cursor: pointer;
-      transition: 0.15s;
-    }
-    .discard-footer button:hover { background: #4752c4; transform: scale(0.97); }
-    .empty-state {
-      color: #6a6f78;
-      text-align: center;
-      margin-top: 40px;
-      font-size: 15px;
-    }
-    @keyframes fadeUp {
-      0% { opacity: 0.5; transform: translateY(6px); }
-      100% { opacity: 1; transform: translateY(0); }
-    }
-    @media (max-width: 700px) {
-      .discard-sidebar { width: 200px; }
-    }
-  </style>
+        @media (max-width: 700px) {
+            .discard-sidebar { width: 200px; }
+            .modal { padding: 24px 20px; margin: 16px; }
+        }
+    </style>
 </head>
 <body>
 
-<!-- СТРАНИЦА АВТОРИЗАЦИИ -->
+<!-- СТРАНИЦА ВХОДА -->
 <div class="discard-auth" id="authPage">
-  <h1>
-    <span class="icon">📡</span>
-    Дискард
-  </h1>
+    <h1><span class="icon">📡</span> Дискард</h1>
+    <div class="auth-form" id="authForm">
+        <div class="error-msg" id="errorMsg"><span id="errorText"></span><span class="hint" id="errorHint"></span></div>
+        <div class="success-msg" id="successMsg"></div>
 
-  <div class="auth-form" id="authForm">
-    <div class="error-msg" id="errorMsg">
-      <span id="errorText"></span>
-      <span class="hint" id="errorHint"></span>
+        <div id="loginMode">
+            <label>Электронная почта</label>
+            <input type="email" id="loginEmail" placeholder="you@example.com" required>
+            <label>Пароль</label>
+            <input type="password" id="loginPassword" placeholder="••••••••" required>
+            <button class="btn" id="loginBtn">Войти</button>
+            <div class="switch">Нет аккаунта? <a id="switchToRegister">Зарегистрироваться</a></div>
+        </div>
+
+        <div id="registerMode" class="hidden">
+            <label>Юзернейм <span class="required">*</span> <span style="font-weight:400;color:#7a7f89;font-size:12px;">(уникальный)</span></label>
+            <input type="text" id="regUsername" placeholder="alex2024" required>
+            <div class="username-hint" id="usernameHint">Только латиница, цифры и _</div>
+
+            <label>Имя <span class="required">*</span> <span style="font-weight:400;color:#7a7f89;font-size:12px;">(может совпадать)</span></label>
+            <input type="text" id="regName" placeholder="Алексей" required>
+
+            <label>Электронная почта <span class="required">*</span></label>
+            <input type="email" id="regEmail" placeholder="you@example.com" required>
+
+            <label>Пароль <span class="required">*</span> (минимум 6 символов)</label>
+            <input type="password" id="regPassword" placeholder="••••••••" required>
+
+            <label>Описание <span class="optional">(необязательно)</span></label>
+            <textarea id="regDescription" placeholder="Расскажите о себе..."></textarea>
+
+            <button class="btn" id="registerBtn">Зарегистрироваться</button>
+            <div class="switch">Уже есть аккаунт? <a id="switchToLogin">Войти</a></div>
+        </div>
     </div>
-    <div class="success-msg" id="successMsg"></div>
-
-    <div id="loginMode">
-      <label>Электронная почта</label>
-      <input type="email" id="loginEmail" placeholder="you@example.com" required>
-
-      <label>Пароль</label>
-      <input type="password" id="loginPassword" placeholder="••••••••" required>
-
-      <button class="btn" id="loginBtn">Войти</button>
-
-      <div class="switch">
-        Нет аккаунта? <a id="switchToRegister">Зарегистрироваться</a>
-      </div>
-    </div>
-
-    <div id="registerMode" class="hidden">
-      <label>Юзернейм <span class="required">*</span> <span style="font-weight:400;color:#7a7f89;font-size:12px;">(уникальный)</span></label>
-      <input type="text" id="regUsername" placeholder="alex2024" required>
-      <div class="username-hint" id="usernameHint">Только латиница, цифры и _</div>
-
-      <label>Имя <span class="required">*</span> <span style="font-weight:400;color:#7a7f89;font-size:12px;">(может совпадать)</span></label>
-      <input type="text" id="regName" placeholder="Алексей" required>
-
-      <label>Электронная почта <span class="required">*</span></label>
-      <input type="email" id="regEmail" placeholder="you@example.com" required>
-
-      <label>Пароль <span class="required">*</span> (минимум 6 символов)</label>
-      <input type="password" id="regPassword" placeholder="••••••••" required>
-
-      <label>Описание <span class="optional">(необязательно)</span></label>
-      <textarea id="regDescription" placeholder="Расскажите о себе..."></textarea>
-
-      <button class="btn" id="registerBtn">Зарегистрироваться</button>
-
-      <div class="switch">
-        Уже есть аккаунт? <a id="switchToLogin">Войти</a>
-      </div>
-    </div>
-
-    <div id="verifyMode" class="hidden">
-      <label>Введите код подтверждения из письма</label>
-      <input type="text" id="verifyCode" placeholder="6-значный код" maxlength="6" required>
-      <button class="btn" id="verifyBtn">Подтвердить</button>
-      <div class="switch">
-        <a id="resendCode">Отправить код повторно</a>
-      </div>
-    </div>
-  </div>
 </div>
 
-<!-- САМ ЧАТ -->
+<!-- ОСНОВНОЙ ЧАТ -->
 <div id="app">
-  <div class="discard-sidebar">
-    <div class="discard-sidebar-header">
-      <div class="discard-brand">
-        <div class="icon">📡</div>
-        <span>Дискард</span>
-      </div>
-      <input class="discard-search" id="searchInput" type="text" placeholder="🔍 Поиск по имени или @юзернейму...">
-    </div>
-    <div class="chat-list" id="chatList">
-      <div class="empty-state" style="color:#6a6f78; padding:20px; text-align:center;">Нет чатов<br>Найдите пользователя</div>
-    </div>
-  </div>
-
-  <div class="discard-chat-window">
-    <div class="chat-header">
-      <div class="left">
-        <div class="avatar-small" id="headerAvatar">👤</div>
-        <div class="chat-header-info">
-          <div class="chat-header-name" id="headerName">Выберите чат</div>
-          <div class="chat-header-username" id="headerUsername">@username</div>
+    <div class="discard-sidebar">
+        <div class="discard-sidebar-header">
+            <div class="discard-brand">
+                <div class="icon">📡</div>
+                <span>Дискард</span>
+            </div>
+            <input class="discard-search" id="searchInput" type="text" placeholder="🔍 Поиск по имени или @юзернейму...">
         </div>
-      </div>
-      <button class="logout-btn" id="logoutBtn">🚪 Выйти</button>
+        <div class="chat-list" id="chatList">
+            <div class="empty-state" style="color:#6a6f78; padding:20px; text-align:center;">Нет чатов<br>Найдите пользователя</div>
+        </div>
+        <!-- Нижняя панель с настройками -->
+        <div class="discard-sidebar-footer">
+            <div class="user-info">
+                <div class="user-name" id="sidebarUserName">Имя</div>
+                <div class="user-username" id="sidebarUserUsername">@username</div>
+            </div>
+            <button class="settings-btn" id="settingsBtn" title="Настройки">⚙️</button>
+        </div>
     </div>
 
-    <div class="discard-chat" id="chatBox">
-      <div class="empty-state">👋 Начните переписку</div>
-    </div>
+    <div class="discard-chat-window">
+        <div class="chat-header">
+            <div class="left">
+                <div class="avatar-small" id="headerAvatar">👤</div>
+                <div class="chat-header-info">
+                    <div class="chat-header-name" id="headerName">Выберите чат</div>
+                    <div class="chat-header-username" id="headerUsername">@username</div>
+                </div>
+            </div>
+            <button class="logout-btn" id="logoutBtn">🚪 Выйти</button>
+        </div>
 
-    <div class="discard-footer">
-      <input type="text" id="msgInput" placeholder="Сообщение..." maxlength="500" disabled>
-      <button id="sendBtn" disabled>➤</button>
+        <div class="discard-chat" id="chatBox">
+            <div class="empty-state">👋 Начните переписку</div>
+        </div>
+
+        <div class="discard-footer">
+            <input type="text" id="msgInput" placeholder="Сообщение..." maxlength="500" disabled>
+            <button id="sendBtn" disabled>➤</button>
+        </div>
     </div>
-  </div>
+</div>
+
+<!-- МОДАЛКА НАСТРОЕК -->
+<div class="modal-overlay" id="settingsModal">
+    <div class="modal">
+        <h2><span class="icon">⚙️</span> Настройки</h2>
+        <label>Имя</label>
+        <input type="text" id="settingsName" placeholder="Ваше имя">
+        <label>Юзернейм (нельзя изменить)</label>
+        <input type="text" id="settingsUsername" disabled style="opacity:0.6;">
+        <label>Описание</label>
+        <textarea id="settingsDescription" placeholder="О себе..."></textarea>
+        <label>Электронная почта</label>
+        <input type="email" id="settingsEmail" placeholder="you@example.com">
+        <div class="saved-toast" id="settingsSaved">✅ Изменения сохранены</div>
+        <div class="error-toast" id="settingsError">❌ Ошибка</div>
+        <button class="btn-save" id="settingsSaveBtn">💾 Сохранить</button>
+        <button class="btn-close" id="settingsCloseBtn">Закрыть</button>
+    </div>
 </div>
 
 <!-- Firebase SDK -->
@@ -555,561 +338,498 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <script>
-  // ====== КОНФИГ ======
-  const firebaseConfig = {
-    apiKey: "AIzaSyBEaTlUs6XtXnnNbPITo70upMX12lDxKk4",
-    authDomain: "discard-mess.firebaseapp.com",
-    databaseURL: "https://discard-mess-default-rtdb.firebaseio.com",
-    projectId: "discard-mess",
-    storageBucket: "discard-mess.firebasestorage.app",
-    messagingSenderId: "343493809803",
-    appId: "1:343493809803:web:b2dc5d99fad37fa39ce68e"
-  };
-  // =====================
+    // ====== КОНФИГ ======
+    const firebaseConfig = {
+        apiKey: "AIzaSyBEaTlUs6XtXnnNbPITo70upMX12lDxKk4",
+        authDomain: "discard-mess.firebaseapp.com",
+        databaseURL: "https://discard-mess-default-rtdb.firebaseio.com",
+        projectId: "discard-mess",
+        storageBucket: "discard-mess.firebasestorage.app",
+        messagingSenderId: "343493809803",
+        appId: "1:343493809803:web:b2dc5d99fad37fa39ce68e"
+    };
+    // =====================
 
-  firebase.initializeApp(firebaseConfig);
-  const auth = firebase.auth();
-  const db = firebase.database();
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.database();
 
-  // DOM
-  const authPage = document.getElementById('authPage');
-  const app = document.getElementById('app');
-  const loginMode = document.getElementById('loginMode');
-  const registerMode = document.getElementById('registerMode');
-  const verifyMode = document.getElementById('verifyMode');
-  const errorMsg = document.getElementById('errorMsg');
-  const errorText = document.getElementById('errorText');
-  const errorHint = document.getElementById('errorHint');
-  const successMsg = document.getElementById('successMsg');
+    // DOM
+    const authPage = document.getElementById('authPage');
+    const app = document.getElementById('app');
+    const loginMode = document.getElementById('loginMode');
+    const registerMode = document.getElementById('registerMode');
+    const errorMsg = document.getElementById('errorMsg');
+    const errorText = document.getElementById('errorText');
+    const errorHint = document.getElementById('errorHint');
+    const successMsg = document.getElementById('successMsg');
 
-  const loginEmail = document.getElementById('loginEmail');
-  const loginPassword = document.getElementById('loginPassword');
-  const loginBtn = document.getElementById('loginBtn');
+    const loginEmail = document.getElementById('loginEmail');
+    const loginPassword = document.getElementById('loginPassword');
+    const loginBtn = document.getElementById('loginBtn');
 
-  const regUsername = document.getElementById('regUsername');
-  const regName = document.getElementById('regName');
-  const regEmail = document.getElementById('regEmail');
-  const regPassword = document.getElementById('regPassword');
-  const regDescription = document.getElementById('regDescription');
-  const registerBtn = document.getElementById('registerBtn');
-  const usernameHint = document.getElementById('usernameHint');
+    const regUsername = document.getElementById('regUsername');
+    const regName = document.getElementById('regName');
+    const regEmail = document.getElementById('regEmail');
+    const regPassword = document.getElementById('regPassword');
+    const regDescription = document.getElementById('regDescription');
+    const registerBtn = document.getElementById('registerBtn');
+    const usernameHint = document.getElementById('usernameHint');
 
-  const verifyCode = document.getElementById('verifyCode');
-  const verifyBtn = document.getElementById('verifyBtn');
-  const resendCode = document.getElementById('resendCode');
+    const switchToRegister = document.getElementById('switchToRegister');
+    const switchToLogin = document.getElementById('switchToLogin');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const settingsBtn = document.getElementById('settingsBtn');
+    const settingsModal = document.getElementById('settingsModal');
+    const settingsCloseBtn = document.getElementById('settingsCloseBtn');
+    const settingsSaveBtn = document.getElementById('settingsSaveBtn');
+    const settingsName = document.getElementById('settingsName');
+    const settingsUsername = document.getElementById('settingsUsername');
+    const settingsDescription = document.getElementById('settingsDescription');
+    const settingsEmail = document.getElementById('settingsEmail');
+    const settingsSaved = document.getElementById('settingsSaved');
+    const settingsError = document.getElementById('settingsError');
 
-  const switchToRegister = document.getElementById('switchToRegister');
-  const switchToLogin = document.getElementById('switchToLogin');
-  const logoutBtn = document.getElementById('logoutBtn');
+    let currentUser = null;
+    let currentChat = null;
+    let allUsers = [];
+    let chatListener = null;
+    let usernameAvailable = false;
 
-  let currentUser = null;
-  let currentChat = null;
-  let allUsers = [];
-  let chatListener = null;
-  let verificationInterval = null;
-  let usernameAvailable = false;
-
-  // ----- ФУНКЦИИ ОШИБОК -----
-
-  function showError(msg, hint = '') {
-    errorMsg.style.display = 'block';
-    errorText.textContent = msg;
-    if (hint) {
-      errorHint.innerHTML = hint;
-      errorHint.style.display = 'block';
-    } else {
-      errorHint.style.display = 'none';
+    // ----- ФУНКЦИИ ОШИБОК -----
+    function showError(msg, hint = '') {
+        errorMsg.style.display = 'block';
+        errorText.textContent = msg;
+        if (hint) { errorHint.innerHTML = hint; errorHint.style.display = 'block'; }
+        else { errorHint.style.display = 'none'; }
+        successMsg.style.display = 'none';
     }
-    successMsg.style.display = 'none';
-  }
-
-  function showSuccess(msg) {
-    successMsg.style.display = 'block';
-    successMsg.textContent = msg;
-    errorMsg.style.display = 'none';
-  }
-
-  function hideMessages() {
-    errorMsg.style.display = 'none';
-    successMsg.style.display = 'none';
-  }
-
-  // ----- ПРОВЕРКА ЮЗЕРНЕЙМА -----
-
-  regUsername.addEventListener('input', () => {
-    const username = regUsername.value.trim();
-    if (!username) {
-      usernameHint.textContent = 'Только латиница, цифры и _';
-      usernameHint.className = 'username-hint';
-      usernameAvailable = false;
-      return;
+    function showSuccess(msg) {
+        successMsg.style.display = 'block';
+        successMsg.textContent = msg;
+        errorMsg.style.display = 'none';
     }
-    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-      usernameHint.textContent = '❌ Только латиница, цифры и _';
-      usernameHint.className = 'username-hint taken';
-      usernameAvailable = false;
-      return;
+    function hideMessages() {
+        errorMsg.style.display = 'none';
+        successMsg.style.display = 'none';
     }
-    db.ref('users').orderByChild('username').equalTo(username).once('value', (snap) => {
-      if (snap.exists()) {
-        usernameHint.textContent = '❌ Юзернейм уже занят';
-        usernameHint.className = 'username-hint taken';
-        usernameAvailable = false;
-      } else {
-        usernameHint.textContent = '✅ Доступен';
-        usernameHint.className = 'username-hint available';
-        usernameAvailable = true;
-      }
-    });
-  });
 
-  function showLogin() {
-    loginMode.classList.remove('hidden');
-    registerMode.classList.add('hidden');
-    verifyMode.classList.add('hidden');
-    hideMessages();
-  }
-
-  function showRegister() {
-    loginMode.classList.add('hidden');
-    registerMode.classList.remove('hidden');
-    verifyMode.classList.add('hidden');
-    hideMessages();
-  }
-
-  function showVerify() {
-    loginMode.classList.add('hidden');
-    registerMode.classList.add('hidden');
-    verifyMode.classList.remove('hidden');
-    hideMessages();
-  }
-
-  // ----- АВТОРИЗАЦИЯ -----
-
-  loginBtn.addEventListener('click', () => {
-    const email = loginEmail.value.trim();
-    const pass = loginPassword.value.trim();
-    if (!email || !pass) { showError('Заполните все поля'); return; }
-    hideMessages();
-    loginBtn.disabled = true;
-    loginBtn.textContent = 'Вход...';
-    auth.signInWithEmailAndPassword(email, pass)
-      .then((userCred) => {
-        loginBtn.disabled = false;
-        loginBtn.textContent = 'Войти';
-        if (!userCred.user.emailVerified) {
-          userCred.user.sendEmailVerification().then(() => {
-            showVerify();
-            showSuccess('Код подтверждения отправлен на ' + email);
-            window._verifyEmail = email;
-            window._verifyPassword = pass;
-            startVerificationCheck();
-          }).catch(err => {
-            showError('Ошибка отправки кода: ' + err.message);
-          });
+    // ----- ПРОВЕРКА ЮЗЕРНЕЙМА -----
+    regUsername.addEventListener('input', () => {
+        const username = regUsername.value.trim();
+        if (!username) {
+            usernameHint.textContent = 'Только латиница, цифры и _';
+            usernameHint.className = 'username-hint';
+            usernameAvailable = false;
+            return;
         }
-      })
-      .catch(err => {
-        loginBtn.disabled = false;
-        loginBtn.textContent = 'Войти';
-        handleAuthError(err);
-      });
-  });
+        if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+            usernameHint.textContent = '❌ Только латиница, цифры и _';
+            usernameHint.className = 'username-hint taken';
+            usernameAvailable = false;
+            return;
+        }
+        db.ref('users').orderByChild('username').equalTo(username).once('value', (snap) => {
+            if (snap.exists()) {
+                usernameHint.textContent = '❌ Юзернейм уже занят';
+                usernameHint.className = 'username-hint taken';
+                usernameAvailable = false;
+            } else {
+                usernameHint.textContent = '✅ Доступен';
+                usernameHint.className = 'username-hint available';
+                usernameAvailable = true;
+            }
+        });
+    });
 
-  registerBtn.addEventListener('click', () => {
-    const username = regUsername.value.trim();
-    const name = regName.value.trim();
-    const email = regEmail.value.trim();
-    const pass = regPassword.value.trim();
-    const description = regDescription.value.trim();
+    function showLogin() {
+        loginMode.classList.remove('hidden');
+        registerMode.classList.add('hidden');
+        hideMessages();
+    }
+    function showRegister() {
+        loginMode.classList.add('hidden');
+        registerMode.classList.remove('hidden');
+        hideMessages();
+    }
 
-    if (!username) { showError('Введите юзернейм'); return; }
-    if (!/^[a-zA-Z0-9_]+$/.test(username)) { showError('Юзернейм: только латиница, цифры и _'); return; }
-    if (!usernameAvailable) { showError('Юзернейм уже занят или не проверен'); return; }
-    if (!name) { showError('Введите ваше имя'); return; }
-    if (!email) { showError('Введите электронную почту'); return; }
-    if (!pass) { showError('Введите пароль'); return; }
-    if (pass.length < 6) { showError('Пароль должен быть минимум 6 символов'); return; }
+    // ----- ОБРАБОТКА ОШИБОК АУТЕНТИФИКАЦИИ -----
+    function handleAuthError(err) {
+        let message = err.message;
+        let hint = '';
+        switch (err.code) {
+            case 'auth/email-already-in-use':
+                message = '❌ Эта почта уже зарегистрирована.';
+                hint = 'Попробуйте <a onclick="switchToLogin.click()">войти</a> или используйте другую почту.';
+                break;
+            case 'auth/invalid-email':
+                message = '❌ Неверный формат почты.';
+                hint = 'Введите корректный email (например, user@example.com)';
+                break;
+            case 'auth/weak-password':
+                message = '❌ Пароль слишком слабый.';
+                hint = 'Используйте минимум 6 символов.';
+                break;
+            case 'auth/user-not-found':
+                message = '❌ Пользователь не найден.';
+                hint = 'Проверьте почту или <a onclick="switchToRegister.click()">зарегистрируйтесь</a>.';
+                break;
+            case 'auth/wrong-password':
+                message = '❌ Неверный пароль.';
+                hint = 'Попробуйте ещё раз или <a onclick="switchToRegister.click()">зарегистрируйтесь</a>.';
+                break;
+            default:
+                message = '❌ ' + err.message;
+                hint = '';
+        }
+        showError(message, hint);
+    }
 
-    hideMessages();
-    registerBtn.disabled = true;
-    registerBtn.textContent = 'Регистрация...';
-
-    auth.createUserWithEmailAndPassword(email, pass)
-      .then((userCred) => {
-        registerBtn.disabled = false;
-        registerBtn.textContent = 'Зарегистрироваться';
-
-        const uid = userCred.user.uid;
-        const userRef = db.ref('users').child(uid);
-        userRef.set({
-          username: username,
-          name: name,
-          email: email,
-          description: description || '',
-          created: Date.now()
-        }).then(() => {
-          userCred.user.sendEmailVerification()
+    // ----- ВХОД -----
+    loginBtn.addEventListener('click', () => {
+        const email = loginEmail.value.trim();
+        const pass = loginPassword.value.trim();
+        if (!email || !pass) { showError('Заполните все поля'); return; }
+        hideMessages();
+        loginBtn.disabled = true;
+        loginBtn.textContent = 'Вход...';
+        auth.signInWithEmailAndPassword(email, pass)
             .then(() => {
-              showVerify();
-              showSuccess('Код подтверждения отправлен на ' + email);
-              window._verifyEmail = email;
-              window._verifyPassword = pass;
-              window._verifyUid = uid;
-              startVerificationCheck();
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Войти';
             })
             .catch(err => {
-              showError('Ошибка отправки кода: ' + err.message);
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Войти';
+                handleAuthError(err);
             });
-        }).catch(err => {
-          showError('Ошибка сохранения данных: ' + err.message);
+    });
+
+    // ----- РЕГИСТРАЦИЯ (МГНОВЕННЫЙ ВХОД) -----
+    registerBtn.addEventListener('click', () => {
+        const username = regUsername.value.trim();
+        const name = regName.value.trim();
+        const email = regEmail.value.trim();
+        const pass = regPassword.value.trim();
+        const description = regDescription.value.trim();
+
+        if (!username) { showError('Введите юзернейм'); return; }
+        if (!/^[a-zA-Z0-9_]+$/.test(username)) { showError('Юзернейм: только латиница, цифры и _'); return; }
+        if (!usernameAvailable) { showError('Юзернейм уже занят или не проверен'); return; }
+        if (!name) { showError('Введите ваше имя'); return; }
+        if (!email) { showError('Введите электронную почту'); return; }
+        if (!pass) { showError('Введите пароль'); return; }
+        if (pass.length < 6) { showError('Пароль должен быть минимум 6 символов'); return; }
+
+        hideMessages();
+        registerBtn.disabled = true;
+        registerBtn.textContent = 'Регистрация...';
+
+        auth.createUserWithEmailAndPassword(email, pass)
+            .then((userCred) => {
+                registerBtn.disabled = false;
+                registerBtn.textContent = 'Зарегистрироваться';
+
+                const uid = userCred.user.uid;
+                const userRef = db.ref('users').child(uid);
+                userRef.set({
+                    username: username,
+                    name: name,
+                    email: email,
+                    description: description || '',
+                    created: Date.now()
+                }).then(() => {
+                    showSuccess('✅ Регистрация успешна! Добро пожаловать.');
+                }).catch(err => {
+                    showError('Ошибка сохранения данных: ' + err.message);
+                });
+            })
+            .catch(err => {
+                registerBtn.disabled = false;
+                registerBtn.textContent = 'Зарегистрироваться';
+                handleAuthError(err);
+            });
+    });
+
+    // ----- ПЕРЕКЛЮЧЕНИЕ -----
+    switchToRegister.addEventListener('click', showRegister);
+    switchToLogin.addEventListener('click', showLogin);
+
+    // ----- ВЫХОД -----
+    logoutBtn.addEventListener('click', () => {
+        auth.signOut().then(() => {
+            app.style.display = 'none';
+            authPage.style.display = 'block';
+            showLogin();
+            hideMessages();
+            if (chatListener) { chatListener.off(); chatListener = null; }
         });
-      })
-      .catch(err => {
-        registerBtn.disabled = false;
-        registerBtn.textContent = 'Зарегистрироваться';
-        handleAuthError(err);
-      });
-  });
+    });
 
-  // ----- ОБРАБОТКА ОШИБОК АУТЕНТИФИКАЦИИ -----
-
-  function handleAuthError(err) {
-    let message = err.message;
-    let hint = '';
-
-    switch (err.code) {
-      case 'auth/email-already-in-use':
-        message = '❌ Эта почта уже зарегистрирована.';
-        hint = 'Попробуйте <a onclick="switchToLogin.click()">войти</a> или используйте другую почту.';
-        break;
-      case 'auth/invalid-email':
-        message = '❌ Неверный формат почты.';
-        hint = 'Введите корректный email (например, user@example.com)';
-        break;
-      case 'auth/weak-password':
-        message = '❌ Пароль слишком слабый.';
-        hint = 'Используйте минимум 6 символов.';
-        break;
-      case 'auth/user-not-found':
-        message = '❌ Пользователь не найден.';
-        hint = 'Проверьте почту или <a onclick="switchToRegister.click()">зарегистрируйтесь</a>.';
-        break;
-      case 'auth/wrong-password':
-        message = '❌ Неверный пароль.';
-        hint = 'Попробуйте ещё раз или <a onclick="switchToRegister.click()">зарегистрируйтесь</a>.';
-        break;
-      default:
-        message = '❌ ' + err.message;
-        hint = '';
-    }
-
-    showError(message, hint);
-  }
-
-  // ----- ПРОВЕРКА ПОДТВЕРЖДЕНИЯ -----
-
-  function startVerificationCheck() {
-    if (verificationInterval) clearInterval(verificationInterval);
-    verificationInterval = setInterval(() => {
-      if (auth.currentUser) {
-        auth.currentUser.reload().then(() => {
-          if (auth.currentUser.emailVerified) {
-            clearInterval(verificationInterval);
-            verificationInterval = null;
-            showSuccess('Почта подтверждена! Вход выполнен.');
-            setTimeout(() => {
-              auth.signInWithEmailAndPassword(
-                auth.currentUser.email,
-                window._verifyPassword || ''
-              ).catch(() => {});
-            }, 500);
-          }
-        });
-      }
-    }, 3000);
-  }
-
-  verifyBtn.addEventListener('click', () => {
-    const code = verifyCode.value.trim();
-    if (!code) { showError('Введите код из письма'); return; }
-    hideMessages();
-    verifyBtn.disabled = true;
-    verifyBtn.textContent = 'Проверка...';
-    
-    if (auth.currentUser) {
-      auth.currentUser.reload().then(() => {
-        if (auth.currentUser.emailVerified) {
-          showSuccess('Почта подтверждена! Вход выполнен.');
-          verifyBtn.disabled = false;
-          verifyBtn.textContent = 'Подтвердить';
-          if (verificationInterval) clearInterval(verificationInterval);
-          auth.signInWithEmailAndPassword(
-            auth.currentUser.email,
-            window._verifyPassword || ''
-          ).catch(() => {});
+    // ----- СОСТОЯНИЕ АУТЕНТИФИКАЦИИ -----
+    auth.onAuthStateChanged((user) => {
+        if (user) {
+            authPage.style.display = 'none';
+            app.style.display = 'flex';
+            initChat(user.uid);
         } else {
-          showError('Код неверный или почта ещё не подтверждена. Попробуйте ещё раз.');
-          verifyBtn.disabled = false;
-          verifyBtn.textContent = 'Подтвердить';
+            authPage.style.display = 'block';
+            app.style.display = 'none';
+            showLogin();
+            hideMessages();
         }
-      }).catch(() => {
-        showError('Ошибка проверки. Попробуйте войти вручную после подтверждения почты.');
-        verifyBtn.disabled = false;
-        verifyBtn.textContent = 'Подтвердить';
-      });
-    } else {
-      showError('Пользователь не найден. Начните регистрацию заново.');
-      verifyBtn.disabled = false;
-      verifyBtn.textContent = 'Подтвердить';
-    }
-  });
+    });
 
-  resendCode.addEventListener('click', () => {
-    if (auth.currentUser) {
-      auth.currentUser.sendEmailVerification()
-        .then(() => {
-          showSuccess('Новый код отправлен на почту');
-        })
-        .catch(err => {
-          showError('Ошибка: ' + err.message);
+    // ----- ЧАТ -----
+    function initChat(uid) {
+        const userRef = db.ref('users').child(uid);
+        userRef.once('value', (snap) => {
+            const data = snap.val();
+            if (data) {
+                currentUser = {
+                    uid: uid,
+                    username: data.username || 'user',
+                    name: data.name || 'Пользователь',
+                    description: data.description || '',
+                    email: data.email || ''
+                };
+                document.querySelector('.discard-brand span').textContent = 'Дискард (@' + currentUser.username + ')';
+                document.getElementById('sidebarUserName').textContent = currentUser.name;
+                document.getElementById('sidebarUserUsername').textContent = '@' + currentUser.username;
+                loadUsers();
+                setupChatListeners();
+                setupSettings();
+            }
         });
-    } else {
-      showError('Пользователь не найден. Начните регистрацию заново.');
     }
-  });
 
-  switchToRegister.addEventListener('click', () => {
-    showRegister();
-  });
-  switchToLogin.addEventListener('click', () => {
-    showLogin();
-  });
-
-  logoutBtn.addEventListener('click', () => {
-    auth.signOut().then(() => {
-      app.style.display = 'none';
-      authPage.style.display = 'block';
-      showLogin();
-      hideMessages();
-      if (chatListener) {
-        chatListener.off();
-        chatListener = null;
-      }
-      if (verificationInterval) {
-        clearInterval(verificationInterval);
-        verificationInterval = null;
-      }
-    });
-  });
-
-  // ----- ОБРАБОТЧИК СОСТОЯНИЯ АУТЕНТИФИКАЦИИ -----
-
-  auth.onAuthStateChanged((user) => {
-    if (user && user.emailVerified) {
-      authPage.style.display = 'none';
-      app.style.display = 'flex';
-      initChat(user.uid);
-      if (verificationInterval) {
-        clearInterval(verificationInterval);
-        verificationInterval = null;
-      }
-    } else if (user && !user.emailVerified) {
-      authPage.style.display = 'block';
-      app.style.display = 'none';
-      showVerify();
-      showSuccess('Подтвердите почту. Код отправлен на ' + user.email);
-      window._verifyEmail = user.email;
-      window._verifyPassword = regPassword.value || '';
-      startVerificationCheck();
-    } else {
-      authPage.style.display = 'block';
-      app.style.display = 'none';
-      showLogin();
-      hideMessages();
+    function loadUsers() {
+        const usersRef = db.ref('users');
+        usersRef.on('value', (snap) => {
+            const data = snap.val();
+            if (!data) { allUsers = []; renderChatList(); return; }
+            allUsers = Object.keys(data)
+                .filter(uid => uid !== currentUser.uid)
+                .map(uid => ({ uid, ...data[uid] }));
+            renderChatList();
+        });
     }
-  });
 
-  // ----- ЧАТ -----
-
-  function initChat(uid) {
-    const userRef = db.ref('users').child(uid);
-    userRef.once('value', (snap) => {
-      const data = snap.val();
-      if (data) {
-        currentUser = {
-          uid: uid,
-          username: data.username || 'user',
-          name: data.name || 'Пользователь',
-          description: data.description || '',
-          email: data.email || ''
-        };
-        document.querySelector('.discard-brand span').textContent = 'Дискард (@' + currentUser.username + ')';
-        loadUsers();
-        setupChatListeners();
-      }
-    });
-  }
-
-  function loadUsers() {
-    const usersRef = db.ref('users');
-    usersRef.on('value', (snap) => {
-      const data = snap.val();
-      if (!data) { allUsers = []; renderChatList(); return; }
-      allUsers = Object.keys(data)
-        .filter(uid => uid !== currentUser.uid)
-        .map(uid => ({ uid, ...data[uid] }));
-      renderChatList();
-    });
-  }
-
-  function renderChatList(filter = '') {
-    const chatList = document.getElementById('chatList');
-    chatList.innerHTML = '';
-    let list = allUsers;
-    if (filter.trim() !== '') {
-      const f = filter.toLowerCase().trim();
-      list = list.filter(user => 
-        user.name.toLowerCase().includes(f) || 
-        user.username.toLowerCase().includes(f)
-      );
+    function renderChatList(filter = '') {
+        const chatList = document.getElementById('chatList');
+        chatList.innerHTML = '';
+        let list = allUsers;
+        if (filter.trim() !== '') {
+            const f = filter.toLowerCase().trim();
+            list = list.filter(user =>
+                user.name.toLowerCase().includes(f) ||
+                user.username.toLowerCase().includes(f)
+            );
+        }
+        if (list.length === 0) {
+            chatList.innerHTML = '<div class="empty-state" style="color:#6a6f78; padding:20px; text-align:center;">Никого не найдено</div>';
+            return;
+        }
+        list.forEach(user => {
+            const div = document.createElement('div');
+            div.className = `chat-item ${currentChat === user.uid ? 'active' : ''}`;
+            div.innerHTML = `
+                <div class="avatar">${user.name.charAt(0).toUpperCase()}</div>
+                <div class="chat-info">
+                    <div class="chat-name">${user.name}</div>
+                    <div class="chat-username">@${user.username}</div>
+                    <div class="chat-desc">${user.description || 'Нет описания'}</div>
+                </div>
+                <span class="chat-time">●</span>
+            `;
+            div.addEventListener('click', () => openChat(user.uid));
+            chatList.appendChild(div);
+        });
     }
-    if (list.length === 0) {
-      chatList.innerHTML = '<div class="empty-state" style="color:#6a6f78; padding:20px; text-align:center;">Никого не найдено</div>';
-      return;
-    }
-    list.forEach(user => {
-      const div = document.createElement('div');
-      div.className = `chat-item ${currentChat === user.uid ? 'active' : ''}`;
-      div.innerHTML = `
-        <div class="avatar">${user.name.charAt(0).toUpperCase()}</div>
-        <div class="chat-info">
-          <div class="chat-name">${user.name}</div>
-          <div class="chat-username">@${user.username}</div>
-          <div class="chat-desc">${user.description || 'Нет описания'}</div>
-        </div>
-        <span class="chat-time">●</span>
-      `;
-      div.addEventListener('click', () => openChat(user.uid));
-      chatList.appendChild(div);
-    });
-  }
 
-  function openChat(uid) {
-    if (!uid || uid === currentUser.uid) return;
-    currentChat = uid;
-    renderChatList(document.getElementById('searchInput').value);
-    
-    const user = allUsers.find(u => u.uid === uid);
-    if (user) {
-      document.getElementById('headerName').textContent = user.name;
-      document.getElementById('headerUsername').textContent = '@' + user.username;
-      document.getElementById('headerAvatar').textContent = user.name.charAt(0).toUpperCase();
-    }
-    
-    document.getElementById('msgInput').disabled = false;
-    document.getElementById('sendBtn').disabled = false;
-    document.getElementById('msgInput').focus();
-    loadMessages(uid);
-    subscribeToMessages(uid);
-  }
+    function openChat(uid) {
+        if (!uid || uid === currentUser.uid) return;
+        currentChat = uid;
+        renderChatList(document.getElementById('searchInput').value);
 
-  function loadMessages(uid) {
-    const chatBox = document.getElementById('chatBox');
-    chatBox.innerHTML = '';
-    const chatRef = db.ref('messages').child(uid).child(currentUser.uid);
-    chatRef.orderByChild('time').limitToLast(50).once('value', (snap) => {
-      const data = snap.val();
-      if (!data) {
-        chatBox.innerHTML = '<div class="empty-state">💬 Начните диалог</div>';
-        return;
-      }
-      const sorted = Object.values(data).sort((a,b) => a.time - b.time);
-      sorted.forEach(msg => renderMessage(msg));
-    });
-  }
+        const user = allUsers.find(u => u.uid === uid);
+        if (user) {
+            document.getElementById('headerName').textContent = user.name;
+            document.getElementById('headerUsername').textContent = '@' + user.username;
+            document.getElementById('headerAvatar').textContent = user.name.charAt(0).toUpperCase();
+        }
 
-  function subscribeToMessages(uid) {
-    if (chatListener) {
-      chatListener.off();
+        document.getElementById('msgInput').disabled = false;
+        document.getElementById('sendBtn').disabled = false;
+        document.getElementById('msgInput').focus();
+        loadMessages(uid);
+        subscribeToMessages(uid);
     }
-    const chatRef = db.ref('messages').child(uid).child(currentUser.uid);
-    chatListener = chatRef.orderByChild('time').limitToLast(1).on('child_added', (snapshot) => {
-      const data = snapshot.val();
-      if (!data) return;
-      const existing = document.getElementById('chatBox').querySelector(`[data-id="${snapshot.key}"]`);
-      if (!existing) {
-        renderMessage(data);
+
+    function loadMessages(uid) {
+        const chatBox = document.getElementById('chatBox');
+        chatBox.innerHTML = '';
+        const chatRef = db.ref('messages').child(uid).child(currentUser.uid);
+        chatRef.orderByChild('time').limitToLast(50).once('value', (snap) => {
+            const data = snap.val();
+            if (!data) {
+                chatBox.innerHTML = '<div class="empty-state">💬 Начните диалог</div>';
+                return;
+            }
+            const sorted = Object.values(data).sort((a, b) => a.time - b.time);
+            sorted.forEach(msg => renderMessage(msg));
+        });
+    }
+
+    function subscribeToMessages(uid) {
+        if (chatListener) { chatListener.off(); }
+        const chatRef = db.ref('messages').child(uid).child(currentUser.uid);
+        chatListener = chatRef.orderByChild('time').limitToLast(1).on('child_added', (snapshot) => {
+            const data = snapshot.val();
+            if (!data) return;
+            const existing = document.getElementById('chatBox').querySelector(`[data-id="${snapshot.key}"]`);
+            if (!existing) {
+                renderMessage(data);
+                document.getElementById('chatBox').scrollTop = document.getElementById('chatBox').scrollHeight;
+            }
+        });
+    }
+
+    function renderMessage(data) {
+        const isSelf = data.sender === currentUser.uid;
+        const div = document.createElement('div');
+        div.className = `message ${isSelf ? 'self' : 'other'}`;
+        div.setAttribute('data-id', data.id || Date.now());
+
+        const userSpan = document.createElement('div');
+        userSpan.className = 'msg-user';
+        let senderName = 'Аноним';
+        if (isSelf) senderName = currentUser.name;
+        else {
+            const sender = allUsers.find(u => u.uid === data.sender);
+            if (sender) senderName = sender.name;
+        }
+        userSpan.innerText = senderName;
+
+        const textSpan = document.createElement('div');
+        textSpan.innerText = data.text || '';
+
+        const timeSpan = document.createElement('div');
+        timeSpan.className = 'msg-time';
+        const d = new Date(data.time);
+        timeSpan.innerText = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+
+        div.appendChild(userSpan);
+        div.appendChild(textSpan);
+        div.appendChild(timeSpan);
+        document.getElementById('chatBox').appendChild(div);
         document.getElementById('chatBox').scrollTop = document.getElementById('chatBox').scrollHeight;
-      }
-    });
-  }
-
-  function renderMessage(data) {
-    const isSelf = data.sender === currentUser.uid;
-    const div = document.createElement('div');
-    div.className = `message ${isSelf ? 'self' : 'other'}`;
-    div.setAttribute('data-id', data.id || Date.now());
-
-    const userSpan = document.createElement('div');
-    userSpan.className = 'msg-user';
-    let senderName = 'Аноним';
-    if (isSelf) {
-      senderName = currentUser.name;
-    } else {
-      const sender = allUsers.find(u => u.uid === data.sender);
-      if (sender) senderName = sender.name;
     }
-    userSpan.innerText = senderName;
 
-    const textSpan = document.createElement('div');
-    textSpan.innerText = data.text || '';
+    function sendMessage() {
+        if (!currentChat) return;
+        const input = document.getElementById('msgInput');
+        const text = input.value.trim();
+        if (!text) return;
+        const newMsg = {
+            sender: currentUser.uid,
+            text: text,
+            time: Date.now(),
+            id: Date.now() + '_' + Math.random().toString(36).substr(2, 4)
+        };
+        const chatRef = db.ref('messages').child(currentChat).child(currentUser.uid);
+        chatRef.push().set(newMsg).then(() => {
+            input.value = '';
+            input.focus();
+        }).catch(() => {});
+    }
 
-    const timeSpan = document.createElement('div');
-    timeSpan.className = 'msg-time';
-    const d = new Date(data.time);
-    timeSpan.innerText = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    function setupChatListeners() {
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            renderChatList(e.target.value);
+        });
+        document.getElementById('sendBtn').addEventListener('click', sendMessage);
+        document.getElementById('msgInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); sendMessage(); }
+        });
+    }
 
-    div.appendChild(userSpan);
-    div.appendChild(textSpan);
-    div.appendChild(timeSpan);
-    document.getElementById('chatBox').appendChild(div);
-    document.getElementById('chatBox').scrollTop = document.getElementById('chatBox').scrollHeight;
-  }
+    // ----- НАСТРОЙКИ (ШЕСТЕРЁНКА) -----
+    function setupSettings() {
+        settingsBtn.addEventListener('click', () => {
+            settingsName.value = currentUser.name || '';
+            settingsUsername.value = '@' + (currentUser.username || '');
+            settingsDescription.value = currentUser.description || '';
+            settingsEmail.value = currentUser.email || '';
+            settingsModal.classList.add('show');
+            settingsSaved.style.display = 'none';
+            settingsError.style.display = 'none';
+        });
 
-  function sendMessage() {
-    if (!currentChat) return;
-    const input = document.getElementById('msgInput');
-    const text = input.value.trim();
-    if (!text) return;
-    const newMsg = {
-      sender: currentUser.uid,
-      text: text,
-      time: Date.now(),
-      id: Date.now() + '_' + Math.random().toString(36).substr(2, 4)
-    };
-    const chatRef = db.ref('messages').child(currentChat).child(currentUser.uid);
-    chatRef.push().set(newMsg).then(() => {
-      input.value = '';
-      input.focus();
-    }).catch(() => {});
-  }
+        settingsCloseBtn.addEventListener('click', () => {
+            settingsModal.classList.remove('show');
+        });
 
-  function setupChatListeners() {
-    document.getElementById('searchInput').addEventListener('input', (e) => {
-      renderChatList(e.target.value);
-    });
+        settingsModal.addEventListener('click', (e) => {
+            if (e.target === settingsModal) settingsModal.classList.remove('show');
+        });
 
-    document.getElementById('sendBtn').addEventListener('click', sendMessage);
-    document.getElementById('msgInput').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        sendMessage();
-      }
-    });
-  }
+        settingsSaveBtn.addEventListener('click', () => {
+            const newName = settingsName.value.trim();
+            const newDescription = settingsDescription.value.trim();
+            const newEmail = settingsEmail.value.trim();
 
-  console.log('🔥 Дискард — имена могут совпадать, юзернейм уникален');
+            if (!newName) {
+                settingsError.textContent = '❌ Имя не может быть пустым';
+                settingsError.style.display = 'block';
+                settingsSaved.style.display = 'none';
+                return;
+            }
+
+            const updates = {};
+            if (newName !== currentUser.name) updates.name = newName;
+            if (newDescription !== currentUser.description) updates.description = newDescription;
+            if (newEmail !== currentUser.email) updates.email = newEmail;
+
+            if (Object.keys(updates).length === 0) {
+                settingsError.textContent = '❌ Нет изменений для сохранения';
+                settingsError.style.display = 'block';
+                settingsSaved.style.display = 'none';
+                return;
+            }
+
+            settingsSaveBtn.disabled = true;
+            settingsSaveBtn.textContent = 'Сохранение...';
+
+            db.ref('users').child(currentUser.uid).update(updates)
+                .then(() => {
+                    Object.assign(currentUser, updates);
+                    document.getElementById('sidebarUserName').textContent = currentUser.name;
+                    document.getElementById('sidebarUserUsername').textContent = '@' + currentUser.username;
+                    if (currentChat) {
+                        const user = allUsers.find(u => u.uid === currentChat);
+                        if (user) {
+                            document.getElementById('headerName').textContent = user.name;
+                            document.getElementById('headerUsername').textContent = '@' + user.username;
+                        }
+                    }
+                    settingsSaved.style.display = 'block';
+                    settingsError.style.display = 'none';
+                    settingsSaveBtn.disabled = false;
+                    settingsSaveBtn.textContent = '💾 Сохранить';
+                    setTimeout(() => { settingsSaved.style.display = 'none'; }, 3000);
+                })
+                .catch(err => {
+                    settingsError.textContent = '❌ ' + err.message;
+                    settingsError.style.display = 'block';
+                    settingsSaved.style.display = 'none';
+                    settingsSaveBtn.disabled = false;
+                    settingsSaveBtn.textContent = '💾 Сохранить';
+                });
+        });
+    }
+
+    console.log('🔥 Дискард — регистрация, чаты, настройки');
 </script>
 </body>
 </html>
