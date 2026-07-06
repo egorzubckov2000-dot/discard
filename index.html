@@ -652,7 +652,7 @@
     var callTimeout = null;
     var isRinging = false;
     var isCallActive = false;
-    var isIncomingCallActive = false; // Флаг для входящего звонка
+    var isIncomingCallActive = false;
 
     var servers = {
         iceServers: [
@@ -668,8 +668,10 @@
 
     // ====== ФУНКЦИИ ЗВОНКОВ ======
     function startCall() {
-        if (!currentChat) {
+        // ЖЁСТКАЯ ПРОВЕРКА
+        if (!currentChat || currentChat === null || currentChat === 'null' || currentChat === undefined) {
             audioStatus.textContent = '❌ Выберите собеседника';
+            console.warn('⚠️ ЗВОНОК: currentChat =', currentChat);
             return;
         }
         if (isInCall) {
@@ -711,12 +713,15 @@
                     fromName: currentUser.name,
                     timestamp: Date.now()
                 };
+                // ПРОВЕРКА ПЕРЕД ЗАПИСЬЮ
+                if (!currentChat || currentChat === 'null') {
+                    throw new Error('currentChat пустой!');
+                }
                 return db.ref('calls').child(currentChat).set(callData);
             })
             .then(function() {
                 console.log('✅ ЗВОНОК: Данные отправлены в Firebase');
                 
-                // Таймаут 30 секунд
                 callTimeout = setTimeout(function() {
                     if (isRinging || isCallActive) {
                         callStatus.textContent = '⏰ Собеседник не отвечает';
@@ -725,7 +730,6 @@
                     }
                 }, 30000);
 
-                // Слушаем ответ только если звонок ещё активен
                 var answerRef = db.ref('calls').child(currentChat).child('answer');
                 answerRef.on('value', function(snap) {
                     var data = snap.val();
@@ -768,13 +772,11 @@
         }
         peerConnection = new RTCPeerConnection(servers);
         
-        // Добавляем локальный стрим только если мы инициатор
         if (isCaller && localStream) {
             localStream.getTracks().forEach(function(track) {
                 peerConnection.addTrack(track, localStream);
             });
         } else if (!isCaller && localStream) {
-            // Для получателя тоже добавляем треки
             localStream.getTracks().forEach(function(track) {
                 peerConnection.addTrack(track, localStream);
             });
@@ -806,7 +808,6 @@
         };
 
         if (isCaller) {
-            // Исходящий звонок — создаём offer
             peerConnection.createOffer()
                 .then(function(offer) {
                     return peerConnection.setLocalDescription(offer);
@@ -825,7 +826,6 @@
                     console.error('❌ ЗВОНОК Ошибка offer:', err);
                 });
         } else {
-            // Входящий звонок — слушаем offer
             var offerRef = db.ref('calls').child(currentChat).child('offer');
             offerRef.on('value', function(snap) {
                 var data = snap.val();
@@ -865,7 +865,6 @@
             });
         }
 
-        // Слушаем ICE кандидаты
         var candidateRef = db.ref('calls').child(currentChat).child('candidate');
         candidateRef.on('child_added', function(snap) {
             var data = snap.val();
@@ -909,7 +908,9 @@
         callBtn.textContent = '📞 Позвонить';
         callBtn.classList.remove('in-call');
         audioStatus.textContent = '📞 Звонок завершён';
-        db.ref('calls').child(currentChat).remove();
+        if (currentChat) {
+            db.ref('calls').child(currentChat).remove();
+        }
     }
 
     function showCallWindow(user, mode) {
@@ -1023,7 +1024,6 @@
         callReceiverUid = callData.callerUid;
         isIncomingCallActive = false;
         
-        // Показываем мини-окно
         var targetUser = null;
         for (var i = 0; i < allUsers.length; i++) {
             if (allUsers[i].uid === currentChat) {
