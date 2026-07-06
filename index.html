@@ -462,11 +462,11 @@
     </div>
 
     <div id="registerMode" class="hidden">
-      <label>Юзернейм <span class="required">*</span></label>
+      <label>Юзернейм <span class="required">*</span> <span style="font-weight:400;color:#7a7f89;font-size:12px;">(уникальный)</span></label>
       <input type="text" id="regUsername" placeholder="alex2024" required>
       <div class="username-hint" id="usernameHint">Только латиница, цифры и _</div>
 
-      <label>Имя <span class="required">*</span></label>
+      <label>Имя <span class="required">*</span> <span style="font-weight:400;color:#7a7f89;font-size:12px;">(может совпадать)</span></label>
       <input type="text" id="regName" placeholder="Алексей" required>
 
       <label>Электронная почта <span class="required">*</span></label>
@@ -504,7 +504,7 @@
         <div class="icon">📡</div>
         <span>Дискард</span>
       </div>
-      <input class="discard-search" id="searchInput" type="text" placeholder="🔍 Поиск пользователя...">
+      <input class="discard-search" id="searchInput" type="text" placeholder="🔍 Поиск по имени или @юзернейму...">
     </div>
     <div class="chat-list" id="chatList">
       <div class="empty-state" style="color:#6a6f78; padding:20px; text-align:center;">Нет чатов<br>Найдите пользователя</div>
@@ -592,7 +592,7 @@
   let verificationInterval = null;
   let usernameAvailable = false;
 
-  // ----- ПРОВЕРКА ЮЗЕРНЕЙМА -----
+  // ----- ПРОВЕРКА ЮЗЕРНЕЙМА (ТОЛЬКО УНИКАЛЬНОСТЬ) -----
 
   regUsername.addEventListener('input', () => {
     const username = regUsername.value.trim();
@@ -608,7 +608,7 @@
       usernameAvailable = false;
       return;
     }
-    // Проверяем уникальность в Firebase
+    // Проверяем уникальность юзернейма
     const usersRef = db.ref('users');
     usersRef.orderByChild('username').equalTo(username).once('value', (snap) => {
       if (snap.exists()) {
@@ -719,7 +719,6 @@
         registerBtn.disabled = false;
         registerBtn.textContent = 'Зарегистрироваться';
 
-        // Сохраняем данные пользователя с юзернеймом
         const uid = userCred.user.uid;
         const userRef = db.ref('users').child(uid);
         userRef.set({
@@ -729,7 +728,6 @@
           description: description || '',
           created: Date.now()
         }).then(() => {
-          // Отправляем письмо с подтверждением
           userCred.user.sendEmailVerification()
             .then(() => {
               showVerify();
@@ -1053,7 +1051,7 @@
     });
   }
 
-  console.log('🔥 Дискард с ручным вводом юзернейма');
+  console.log('🔥 Дискард — имена могут совпадать, юзернейм уникален');
 </script>
 </body>
 </html>
