@@ -137,6 +137,18 @@
       border-left: 4px solid #e74c3c;
     }
 
+    .auth-form .error-msg .hint {
+      display: block;
+      margin-top: 6px;
+      font-size: 13px;
+      color: #f5a3a3;
+    }
+    .auth-form .error-msg .hint a {
+      color: #7289da;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
     .auth-form .success-msg {
       background: #1e4a3a;
       color: #a3e0c0;
@@ -444,7 +456,10 @@
   </h1>
 
   <div class="auth-form" id="authForm">
-    <div class="error-msg" id="errorMsg"></div>
+    <div class="error-msg" id="errorMsg">
+      <span id="errorText"></span>
+      <span class="hint" id="errorHint"></span>
+    </div>
     <div class="success-msg" id="successMsg"></div>
 
     <div id="loginMode">
@@ -563,6 +578,8 @@
   const registerMode = document.getElementById('registerMode');
   const verifyMode = document.getElementById('verifyMode');
   const errorMsg = document.getElementById('errorMsg');
+  const errorText = document.getElementById('errorText');
+  const errorHint = document.getElementById('errorHint');
   const successMsg = document.getElementById('successMsg');
 
   const loginEmail = document.getElementById('loginEmail');
@@ -592,7 +609,32 @@
   let verificationInterval = null;
   let usernameAvailable = false;
 
-  // ----- ПРОВЕРКА ЮЗЕРНЕЙМА (ТОЛЬКО УНИКАЛЬНОСТЬ) -----
+  // ----- ФУНКЦИИ ОШИБОК -----
+
+  function showError(msg, hint = '') {
+    errorMsg.style.display = 'block';
+    errorText.textContent = msg;
+    if (hint) {
+      errorHint.innerHTML = hint;
+      errorHint.style.display = 'block';
+    } else {
+      errorHint.style.display = 'none';
+    }
+    successMsg.style.display = 'none';
+  }
+
+  function showSuccess(msg) {
+    successMsg.style.display = 'block';
+    successMsg.textContent = msg;
+    errorMsg.style.display = 'none';
+  }
+
+  function hideMessages() {
+    errorMsg.style.display = 'none';
+    successMsg.style.display = 'none';
+  }
+
+  // ----- ПРОВЕРКА ЮЗЕРНЕЙМА -----
 
   regUsername.addEventListener('input', () => {
     const username = regUsername.value.trim();
@@ -608,9 +650,7 @@
       usernameAvailable = false;
       return;
     }
-    // Проверяем уникальность юзернейма
-    const usersRef = db.ref('users');
-    usersRef.orderByChild('username').equalTo(username).once('value', (snap) => {
+    db.ref('users').orderByChild('username').equalTo(username).once('value', (snap) => {
       if (snap.exists()) {
         usernameHint.textContent = '❌ Юзернейм уже занят';
         usernameHint.className = 'username-hint taken';
@@ -622,25 +662,6 @@
       }
     });
   });
-
-  // ----- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ -----
-
-  function showError(msg) {
-    errorMsg.style.display = 'block';
-    errorMsg.textContent = msg;
-    successMsg.style.display = 'none';
-  }
-
-  function showSuccess(msg) {
-    successMsg.style.display = 'block';
-    successMsg.textContent = msg;
-    errorMsg.style.display = 'none';
-  }
-
-  function hideMessages() {
-    errorMsg.style.display = 'none';
-    successMsg.style.display = 'none';
-  }
 
   function showLogin() {
     loginMode.classList.remove('hidden');
@@ -691,7 +712,7 @@
       .catch(err => {
         loginBtn.disabled = false;
         loginBtn.textContent = 'Войти';
-        showError(err.message);
+        handleAuthError(err);
       });
   });
 
@@ -747,9 +768,46 @@
       .catch(err => {
         registerBtn.disabled = false;
         registerBtn.textContent = 'Зарегистрироваться';
-        showError(err.message);
+        handleAuthError(err);
       });
   });
+
+  // ----- ОБРАБОТКА ОШИБОК АУТЕНТИФИКАЦИИ -----
+
+  function handleAuthError(err) {
+    let message = err.message;
+    let hint = '';
+
+    switch (err.code) {
+      case 'auth/email-already-in-use':
+        message = '❌ Эта почта уже зарегистрирована.';
+        hint = 'Попробуйте <a onclick="switchToLogin.click()">войти</a> или используйте другую почту.';
+        break;
+      case 'auth/invalid-email':
+        message = '❌ Неверный формат почты.';
+        hint = 'Введите корректный email (например, user@example.com)';
+        break;
+      case 'auth/weak-password':
+        message = '❌ Пароль слишком слабый.';
+        hint = 'Используйте минимум 6 символов.';
+        break;
+      case 'auth/user-not-found':
+        message = '❌ Пользователь не найден.';
+        hint = 'Проверьте почту или <a onclick="switchToRegister.click()">зарегистрируйтесь</a>.';
+        break;
+      case 'auth/wrong-password':
+        message = '❌ Неверный пароль.';
+        hint = 'Попробуйте ещё раз или <a onclick="switchToRegister.click()">зарегистрируйтесь</a>.';
+        break;
+      default:
+        message = '❌ ' + err.message;
+        hint = '';
+    }
+
+    showError(message, hint);
+  }
+
+  // ----- ПРОВЕРКА ПОДТВЕРЖДЕНИЯ -----
 
   function startVerificationCheck() {
     if (verificationInterval) clearInterval(verificationInterval);
