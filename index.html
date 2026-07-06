@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Дискард — звонок себе</title>
+    <title>Дискард — звонки</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📡</text></svg>">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, sans-serif; }
@@ -195,6 +195,148 @@
         .empty-state { color: #6a6f78; text-align: center; margin-top: 40px; font-size: 15px; }
         @keyframes fadeUp { 0% { opacity: 0.5; transform: translateY(6px); } 100% { opacity: 1; transform: translateY(0); } }
 
+        /* ===== МИНИ-ОКНО ЗВОНКА ===== */
+        .call-window {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #2b2d31;
+            border-radius: 28px;
+            padding: 40px 36px;
+            max-width: 360px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.9);
+            color: #f2f3f5;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            z-index: 3000;
+            border: 1px solid #3a3c42;
+        }
+        .call-window.show { display: flex; }
+
+        .call-window .call-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: #5865f2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 16px;
+            flex-shrink: 0;
+        }
+        .call-window .call-name {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .call-window .call-username {
+            font-size: 14px;
+            color: #7a7f89;
+            margin-bottom: 16px;
+        }
+        .call-window .call-status {
+            font-size: 14px;
+            color: #7a7f89;
+            margin-bottom: 24px;
+            background: #383a40;
+            padding: 6px 18px;
+            border-radius: 40px;
+        }
+        .call-window .call-timer {
+            font-size: 20px;
+            font-weight: 600;
+            color: #2ecc71;
+            margin-bottom: 24px;
+            font-variant-numeric: tabular-nums;
+        }
+        .call-window .call-timer.ringing {
+            color: #f1c40f;
+        }
+        .call-window .call-timer.ended {
+            color: #e74c3c;
+        }
+
+        .call-window .call-actions {
+            display: flex;
+            gap: 16px;
+            width: 100%;
+            justify-content: center;
+        }
+        .call-window .call-actions button {
+            border: none;
+            padding: 12px 28px;
+            border-radius: 40px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.15s;
+            flex: 1;
+        }
+        .call-window .call-actions .hangup {
+            background: #e74c3c;
+            color: #fff;
+        }
+        .call-window .call-actions .hangup:hover { background: #c0392b; }
+        .call-window .call-actions .close-btn {
+            background: #3a3c42;
+            color: #b5bac1;
+        }
+        .call-window .call-actions .close-btn:hover { background: #4e5058; color: #fff; }
+
+        /* ===== МОДАЛКА ВХОДЯЩЕГО ЗВОНКА ===== */
+        .incoming-call {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(6px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            flex-direction: column;
+        }
+        .incoming-call.show { display: flex; }
+        .incoming-call .call-box {
+            background: #2b2d31;
+            padding: 40px 50px;
+            border-radius: 28px;
+            text-align: center;
+            color: #f2f3f5;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+            max-width: 400px;
+            width: 100%;
+        }
+        .incoming-call .call-box h2 { font-size: 28px; margin-bottom: 8px; }
+        .incoming-call .call-box p { color: #7a7f89; margin-bottom: 24px; font-size: 16px; }
+        .incoming-call .call-box .call-actions {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+        }
+        .incoming-call .call-box .call-actions button {
+            border: none;
+            padding: 12px 32px;
+            border-radius: 40px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.15s;
+        }
+        .incoming-call .call-box .call-actions .accept { background: #2ecc71; color: #fff; }
+        .incoming-call .call-box .call-actions .accept:hover { background: #27ae60; }
+        .incoming-call .call-box .call-actions .reject { background: #e74c3c; color: #fff; }
+        .incoming-call .call-box .call-actions .reject:hover { background: #c0392b; }
+
+        /* ===== МОДАЛКА НАСТРОЕК ===== */
         .modal-overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
@@ -259,54 +401,10 @@
         }
         .modal .audio-test-btn:hover { background: #4e5058; }
 
-        .incoming-call {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.85);
-            backdrop-filter: blur(6px);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 2000;
-            flex-direction: column;
-        }
-        .incoming-call.show { display: flex; }
-        .incoming-call .call-box {
-            background: #2b2d31;
-            padding: 40px 50px;
-            border-radius: 28px;
-            text-align: center;
-            color: #f2f3f5;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
-            max-width: 400px;
-            width: 100%;
-        }
-        .incoming-call .call-box h2 { font-size: 28px; margin-bottom: 8px; }
-        .incoming-call .call-box p { color: #7a7f89; margin-bottom: 24px; font-size: 16px; }
-        .incoming-call .call-box .call-actions {
-            display: flex;
-            gap: 16px;
-            justify-content: center;
-        }
-        .incoming-call .call-box .call-actions button {
-            border: none;
-            padding: 12px 32px;
-            border-radius: 40px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: 0.15s;
-        }
-        .incoming-call .call-box .call-actions .accept { background: #2ecc71; color: #fff; }
-        .incoming-call .call-box .call-actions .accept:hover { background: #27ae60; }
-        .incoming-call .call-box .call-actions .reject { background: #e74c3c; color: #fff; }
-        .incoming-call .call-box .call-actions .reject:hover { background: #c0392b; }
         @media (max-width: 700px) {
             .discard-sidebar { width: 200px; }
             .modal { padding: 24px 20px; margin: 16px; }
+            .call-window { max-width: 320px; padding: 28px 20px; }
             .incoming-call .call-box { padding: 24px 20px; }
         }
     </style>
@@ -398,7 +496,20 @@
     </div>
 </div>
 
-<!-- Модалка входящего звонка (будет появляться, но автоматически закрываться) -->
+<!-- МИНИ-ОКНО ЗВОНКА -->
+<div class="call-window" id="callWindow">
+    <div class="call-avatar" id="callAvatar">👤</div>
+    <div class="call-name" id="callName">Имя</div>
+    <div class="call-username" id="callUsername">@username</div>
+    <div class="call-status" id="callStatus">📞 Вызов...</div>
+    <div class="call-timer ringing" id="callTimer">00:00</div>
+    <div class="call-actions">
+        <button class="hangup" id="hangupBtn">📞 Положить</button>
+        <button class="close-btn" id="closeCallBtn">✖ Закрыть</button>
+    </div>
+</div>
+
+<!-- МОДАЛКА ВХОДЯЩЕГО ЗВОНКА -->
 <div class="incoming-call" id="incomingCall">
     <div class="call-box">
         <h2>📞 Входящий звонок</h2>
@@ -410,15 +521,14 @@
     </div>
 </div>
 
+<!-- МОДАЛКА НАСТРОЕК -->
 <div class="modal-overlay" id="settingsModal">
     <div class="modal">
         <h2><span class="icon">⚙️</span> Настройки</h2>
-        
         <div class="modal-tabs">
             <button class="active" data-tab="tab-account">👤 Аккаунт</button>
             <button data-tab="tab-audio">🎧 Аудио</button>
         </div>
-
         <div class="tab-content active" id="tab-account">
             <label>Имя</label>
             <input type="text" id="settingsName" placeholder="Ваше имя">
@@ -429,14 +539,12 @@
             <label>Электронная почта</label>
             <input type="email" id="settingsEmail" placeholder="you@example.com">
         </div>
-
         <div class="tab-content" id="tab-audio">
             <label>🎤 Микрофон</label>
             <select id="audioInputSelect">
                 <option value="">Выберите микрофон...</option>
             </select>
             <button class="audio-test-btn" id="testMicBtn">🔊 Проверить микрофон</button>
-            
             <label style="margin-top:16px;">🔊 Динамики (выход)</label>
             <select id="audioOutputSelect">
                 <option value="">Выберите динамики...</option>
@@ -444,7 +552,6 @@
             <button class="audio-test-btn" id="testOutputBtn">🔊 Проверить динамики</button>
             <div style="margin-top:12px;font-size:13px;color:#7a7f89;" id="audioStatus">Готово</div>
         </div>
-
         <div class="saved-toast" id="settingsSaved">✅ Изменения сохранены</div>
         <div class="error-toast" id="settingsError">❌ Ошибка</div>
         <button class="btn-save" id="settingsSaveBtn">💾 Сохранить</button>
@@ -517,6 +624,16 @@
     var testOutputBtn = document.getElementById('testOutputBtn');
     var audioStatus = document.getElementById('audioStatus');
 
+    // МИНИ-ОКНО ЗВОНКА
+    var callWindow = document.getElementById('callWindow');
+    var callAvatar = document.getElementById('callAvatar');
+    var callName = document.getElementById('callName');
+    var callUsername = document.getElementById('callUsername');
+    var callStatus = document.getElementById('callStatus');
+    var callTimer = document.getElementById('callTimer');
+    var hangupBtn = document.getElementById('hangupBtn');
+    var closeCallBtn = document.getElementById('closeCallBtn');
+
     var currentUser = null;
     var currentChat = null;
     var allUsers = [];
@@ -524,12 +641,17 @@
     var usernameAvailable = false;
     var sessionUid = localStorage.getItem('discard_session_uid');
 
-    // ====== ЗВОНКИ ======
+    // ЗВОНКИ
     var localStream = null;
     var remoteStream = null;
     var peerConnection = null;
     var isInCall = false;
     var callReceiverUid = null;
+    var callTimerInterval = null;
+    var callStartTime = 0;
+    var callTimeout = null;
+    var isRinging = false;
+    var isCallActive = false;
 
     var servers = {
         iceServers: [
@@ -554,14 +676,20 @@
             return;
         }
 
+        var targetUser = allUsers.find(function(u) { return u.uid === currentChat; });
+        if (!targetUser) {
+            audioStatus.textContent = '❌ Пользователь не найден';
+            return;
+        }
+
+        // Показываем мини-окно
+        showCallWindow(targetUser, 'ringing');
+        isRinging = true;
+        callStartTime = Date.now();
+        startTimer('ringing');
+
         audioStatus.textContent = '📞 Идёт вызов...';
         console.log('📞 ЗВОНОК: Начинаем звонок для', currentChat);
-        
-        // ЕСЛИ ЗВОНИМ СЕБЕ — ЗАПУСКАЕМ СРАЗУ
-        var isSelfCall = (currentChat === currentUser.uid);
-        if (isSelfCall) {
-            console.log('📞 ЗВОНОК: Звоним себе! Запускаем сразу');
-        }
 
         navigator.mediaDevices.getUserMedia({ audio: true, video: false })
             .then(function(stream) {
@@ -576,49 +704,47 @@
             })
             .then(function() {
                 console.log('✅ ЗВОНОК: Данные отправлены в Firebase');
-                audioStatus.textContent = '📞 Ожидаем ответа...';
                 
-                if (isSelfCall) {
-                    // ЗВОНИМ СЕБЕ: сразу принимаем
-                    setTimeout(function() {
-                        console.log('📞 ЗВОНОК: Автоматический приём (звонок себе)');
-                        audioStatus.textContent = '🔊 Звонок принят!';
-                        // Имитируем ответ "accept"
-                        db.ref('calls').child(currentChat).child('answer').set('accept');
-                        // Запускаем WebRTC
-                        startPeerConnection(true);
-                    }, 500);
-                } else {
-                    // Обычный звонок — ждём ответа
-                    var answerRef = db.ref('calls').child(currentChat).child('answer');
-                    answerRef.on('value', function(snap) {
-                        var data = snap.val();
-                        console.log('📞 ЗВОНОК: Получен ответ:', data);
-                        if (data === 'accept') {
-                            answerRef.off();
-                            audioStatus.textContent = '🔊 Звонок принят!';
-                            console.log('✅ ЗВОНОК: Собеседник принял');
-                            startPeerConnection(true);
-                        } else if (data === 'reject') {
-                            answerRef.off();
-                            audioStatus.textContent = '❌ Звонок отклонён';
-                            console.log('❌ ЗВОНОК: Собеседник отклонил');
-                            endCall();
-                        }
-                    });
-                    setTimeout(function() {
+                // Таймаут 30 секунд
+                callTimeout = setTimeout(function() {
+                    if (isRinging) {
+                        callStatus.textContent = '⏰ Собеседник не отвечает';
+                        callTimer.className = 'call-timer ended';
+                        endCall();
+                    }
+                }, 30000);
+
+                var answerRef = db.ref('calls').child(currentChat).child('answer');
+                answerRef.on('value', function(snap) {
+                    var data = snap.val();
+                    console.log('📞 ЗВОНОК: Получен ответ:', data);
+                    if (data === 'accept') {
                         answerRef.off();
-                        if (!isInCall) {
-                            audioStatus.textContent = '⏰ Звонок не отвечен';
-                            console.log('⏰ ЗВОНОК: Таймаут');
-                            endCall();
-                        }
-                    }, 30000);
-                }
+                        if (callTimeout) clearTimeout(callTimeout);
+                        audioStatus.textContent = '🔊 Звонок принят!';
+                        console.log('✅ ЗВОНОК: Собеседник принял');
+                        isRinging = false;
+                        isCallActive = true;
+                        callStatus.textContent = '🔊 Разговор идёт...';
+                        callTimer.className = 'call-timer';
+                        startTimer('call');
+                        startPeerConnection(true);
+                    } else if (data === 'reject') {
+                        answerRef.off();
+                        if (callTimeout) clearTimeout(callTimeout);
+                        audioStatus.textContent = '❌ Звонок отклонён';
+                        console.log('❌ ЗВОНОК: Собеседник отклонил');
+                        callStatus.textContent = '❌ Звонок отклонён';
+                        callTimer.className = 'call-timer ended';
+                        endCall();
+                    }
+                });
             })
             .catch(function(err) {
                 audioStatus.textContent = '❌ Ошибка: ' + err.message;
                 console.error('❌ ЗВОНОК:', err);
+                callStatus.textContent = '❌ Ошибка: ' + err.message;
+                endCall();
             });
     }
 
@@ -668,7 +794,9 @@
             audioStatus.textContent = '🔊 Разговор идёт...';
             callBtn.textContent = '🔴 Положить трубку';
             callBtn.classList.add('in-call');
-            isInCall = true;
+            isCallActive = true;
+            callStatus.textContent = '🔊 Разговор идёт...';
+            callTimer.className = 'call-timer';
             console.log('✅ ЗВОНОК: Трек получен, разговор начат');
         };
 
@@ -727,6 +855,16 @@
 
     function endCall() {
         console.log('📞 ЗВОНОК: Завершаем звонок');
+        isRinging = false;
+        isCallActive = false;
+        if (callTimeout) {
+            clearTimeout(callTimeout);
+            callTimeout = null;
+        }
+        if (callTimerInterval) {
+            clearInterval(callTimerInterval);
+            callTimerInterval = null;
+        }
         if (peerConnection) {
             peerConnection.close();
             peerConnection = null;
@@ -745,9 +883,63 @@
         callBtn.classList.remove('in-call');
         audioStatus.textContent = '📞 Звонок завершён';
         db.ref('calls').child(currentChat).remove();
+        closeCallWindow();
+    }
+
+    function showCallWindow(user, mode) {
+        callAvatar.textContent = user.name.charAt(0).toUpperCase();
+        callName.textContent = user.name;
+        callUsername.textContent = '@' + user.username;
+        callWindow.classList.add('show');
+        if (mode === 'ringing') {
+            callStatus.textContent = '📞 Вызов...';
+            callTimer.className = 'call-timer ringing';
+        } else {
+            callStatus.textContent = '🔊 Разговор...';
+            callTimer.className = 'call-timer';
+        }
+    }
+
+    function closeCallWindow() {
+        callWindow.classList.remove('show');
+        if (callTimerInterval) {
+            clearInterval(callTimerInterval);
+            callTimerInterval = null;
+        }
+        callTimer.textContent = '00:00';
+    }
+
+    function startTimer(mode) {
+        if (callTimerInterval) clearInterval(callTimerInterval);
+        var start = Date.now();
+        callTimerInterval = setInterval(function() {
+            var elapsed = Math.floor((Date.now() - start) / 1000);
+            var mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
+            var secs = String(elapsed % 60).padStart(2, '0');
+            callTimer.textContent = mins + ':' + secs;
+            if (mode === 'ringing' && elapsed >= 30) {
+                clearInterval(callTimerInterval);
+                callTimerInterval = null;
+            }
+        }, 1000);
     }
 
     callBtn.addEventListener('click', startCall);
+
+    hangupBtn.addEventListener('click', function() {
+        endCall();
+        closeCallWindow();
+    });
+
+    closeCallBtn.addEventListener('click', function() {
+        if (isCallActive) {
+            endCall();
+        } else if (isRinging) {
+            if (callTimeout) clearTimeout(callTimeout);
+            endCall();
+        }
+        closeCallWindow();
+    });
 
     // ====== СЛУШАЕМ ВХОДЯЩИЕ ЗВОНКИ ======
     function listenForCalls() {
@@ -763,7 +955,19 @@
             var callerUid = snap.key;
             console.log('📞 ЗВОНОК: Новый звонок от', callerUid, data.fromName);
             
-            // Показываем модалку для всех, включая себя
+            if (data.from === currentUser.uid) {
+                console.log('📞 ЗВОНОК: Звонок от себя, показываем окно');
+                var user = allUsers.find(function(u) { return u.uid === callerUid; });
+                if (user) {
+                    showCallWindow(user, 'ringing');
+                    isRinging = true;
+                    callStartTime = Date.now();
+                    startTimer('ringing');
+                    callStatus.textContent = '📞 Звонок себе...';
+                }
+                return;
+            }
+            
             incomingCall.classList.add('show');
             callerName.textContent = data.fromName || 'Неизвестный';
             window._incomingCallData = {
@@ -786,14 +990,17 @@
         callReceiverUid = callData.callerUid;
         db.ref('calls').child(currentChat).child('answer').set('accept');
         audioStatus.textContent = '🔊 Звонок принят!';
-        startPeerConnection(false);
-        var user = allUsers.find(function(u) { return u.uid === currentChat; });
-        if (user) {
-            document.getElementById('headerName').textContent = user.name;
-            document.getElementById('headerUsername').textContent = '@' + user.username;
-            document.getElementById('headerAvatar').textContent = user.name.charAt(0).toUpperCase();
-            callBtn.style.display = 'inline-flex';
+        
+        var targetUser = allUsers.find(function(u) { return u.uid === currentChat; });
+        if (targetUser) {
+            showCallWindow(targetUser, 'call');
+            isCallActive = true;
+            callStatus.textContent = '🔊 Разговор идёт...';
+            callTimer.className = 'call-timer';
+            startTimer('call');
         }
+        
+        startPeerConnection(false);
         window._incomingCallData = null;
     });
 
@@ -829,7 +1036,6 @@
                     opt.textContent = inputs[i].label || 'Микрофон ' + (i + 1);
                     audioInputSelect.appendChild(opt);
                 }
-
                 var outputs = devices.filter(function(d) { return d.kind === 'audiooutput'; });
                 audioOutputSelect.innerHTML = '<option value="">Выберите динамики...</option>';
                 for (var j = 0; j < outputs.length; j++) {
@@ -838,12 +1044,10 @@
                     opt2.textContent = outputs[j].label || 'Динамики ' + (j + 1);
                     audioOutputSelect.appendChild(opt2);
                 }
-
                 var savedInput = localStorage.getItem('discard_audio_input');
                 var savedOutput = localStorage.getItem('discard_audio_output');
                 if (savedInput) audioInputSelect.value = savedInput;
                 if (savedOutput) audioOutputSelect.value = savedOutput;
-
                 audioStatus.textContent = '✅ Найдено микрофонов: ' + inputs.length + ', динамиков: ' + outputs.length;
             })
             .catch(function(err) {
@@ -1416,7 +1620,7 @@
         });
     }
 
-    console.log('🔥 Дискард — можно звонить себе!');
+    console.log('🔥 Дискард — мини-окно звонка с таймером!');
 </script>
 </body>
 </html>
