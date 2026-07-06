@@ -57,8 +57,13 @@
       color: #b5bac1;
       margin-bottom: 4px;
     }
+    .auth-form label .optional {
+      color: #7a7f89;
+      font-weight: 400;
+      font-size: 12px;
+    }
 
-    .auth-form input {
+    .auth-form input, .auth-form textarea {
       background: #383a40;
       border: none;
       padding: 14px 16px;
@@ -69,8 +74,14 @@
       transition: 0.2s;
       width: 100%;
     }
-    .auth-form input::placeholder { color: #7a7f89; }
-    .auth-form input:focus { background: #404249; box-shadow: 0 0 0 2px #5865f2; }
+    .auth-form input::placeholder, .auth-form textarea::placeholder { color: #7a7f89; }
+    .auth-form input:focus, .auth-form textarea:focus { background: #404249; box-shadow: 0 0 0 2px #5865f2; }
+    .auth-form textarea {
+      resize: vertical;
+      min-height: 60px;
+      max-height: 120px;
+      font-family: inherit;
+    }
 
     .auth-form .btn {
       background: #5865f2;
@@ -215,10 +226,20 @@
       font-size: 16px;
       flex-shrink: 0;
     }
+    .chat-item .chat-info {
+      flex: 1;
+      min-width: 0;
+    }
     .chat-item .chat-name {
       font-weight: 500;
       font-size: 15px;
-      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .chat-item .chat-desc {
+      font-size: 12px;
+      color: #7a7f89;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -249,6 +270,7 @@
       display: flex;
       align-items: center;
       gap: 12px;
+      min-width: 0;
     }
     .chat-header .avatar-small {
       width: 32px;
@@ -260,6 +282,25 @@
       justify-content: center;
       color: #fff;
       font-weight: 600;
+      flex-shrink: 0;
+    }
+    .chat-header .chat-header-info {
+      min-width: 0;
+    }
+    .chat-header .chat-header-name {
+      font-size: 18px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .chat-header .chat-header-desc {
+      font-size: 13px;
+      font-weight: 400;
+      color: #7a7f89;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .chat-header .logout-btn {
       background: #3a3c42;
@@ -270,6 +311,7 @@
       font-size: 13px;
       cursor: pointer;
       transition: 0.2s;
+      flex-shrink: 0;
     }
     .chat-header .logout-btn:hover { background: #4e5058; color: #fff; }
     .discard-chat {
@@ -398,11 +440,17 @@
     </div>
 
     <div id="registerMode" class="hidden">
-      <label>Электронная почта</label>
+      <label>Ваше имя <span style="color:#e74c3c;">*</span></label>
+      <input type="text" id="regName" placeholder="Алексей" required>
+
+      <label>Электронная почта <span style="color:#e74c3c;">*</span></label>
       <input type="email" id="regEmail" placeholder="you@example.com" required>
 
-      <label>Пароль (минимум 6 символов)</label>
+      <label>Пароль <span style="color:#e74c3c;">*</span> (минимум 6 символов)</label>
       <input type="password" id="regPassword" placeholder="••••••••" required>
+
+      <label>Описание <span class="optional">(необязательно)</span></label>
+      <textarea id="regDescription" placeholder="Расскажите о себе..."></textarea>
 
       <button class="btn" id="registerBtn">Зарегистрироваться</button>
 
@@ -441,7 +489,10 @@
     <div class="chat-header">
       <div class="left">
         <div class="avatar-small" id="headerAvatar">👤</div>
-        <span id="headerName">Выберите чат</span>
+        <div class="chat-header-info">
+          <div class="chat-header-name" id="headerName">Выберите чат</div>
+          <div class="chat-header-desc" id="headerDesc"></div>
+        </div>
       </div>
       <button class="logout-btn" id="logoutBtn">🚪 Выйти</button>
     </div>
@@ -492,8 +543,10 @@
   const loginPassword = document.getElementById('loginPassword');
   const loginBtn = document.getElementById('loginBtn');
 
+  const regName = document.getElementById('regName');
   const regEmail = document.getElementById('regEmail');
   const regPassword = document.getElementById('regPassword');
+  const regDescription = document.getElementById('regDescription');
   const registerBtn = document.getElementById('registerBtn');
 
   const verifyCode = document.getElementById('verifyCode');
@@ -509,6 +562,7 @@
   let allUsers = [];
   let chatListener = null;
   let verificationInterval = null;
+  let userDataCache = {};
 
   // ----- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ -----
 
@@ -564,13 +618,11 @@
         loginBtn.disabled = false;
         loginBtn.textContent = 'Войти';
         if (!userCred.user.emailVerified) {
-          // Если почта не подтверждена — отправляем код повторно
           userCred.user.sendEmailVerification().then(() => {
             showVerify();
             showSuccess('Код подтверждения отправлен на ' + email);
             window._verifyEmail = email;
             window._verifyPassword = pass;
-            // Запускаем проверку подтверждения
             startVerificationCheck();
           }).catch(err => {
             showError('Ошибка отправки кода: ' + err.message);
@@ -585,28 +637,50 @@
   });
 
   registerBtn.addEventListener('click', () => {
+    const name = regName.value.trim();
     const email = regEmail.value.trim();
     const pass = regPassword.value.trim();
-    if (!email || !pass) { showError('Заполните все поля'); return; }
+    const description = regDescription.value.trim();
+
+    if (!name) { showError('Введите ваше имя'); return; }
+    if (!email) { showError('Введите электронную почту'); return; }
+    if (!pass) { showError('Введите пароль'); return; }
     if (pass.length < 6) { showError('Пароль должен быть минимум 6 символов'); return; }
+
     hideMessages();
     registerBtn.disabled = true;
     registerBtn.textContent = 'Регистрация...';
+
     auth.createUserWithEmailAndPassword(email, pass)
       .then((userCred) => {
         registerBtn.disabled = false;
         registerBtn.textContent = 'Зарегистрироваться';
-        userCred.user.sendEmailVerification()
-          .then(() => {
-            showVerify();
-            showSuccess('Код подтверждения отправлен на ' + email);
-            window._verifyEmail = email;
-            window._verifyPassword = pass;
-            startVerificationCheck();
-          })
-          .catch(err => {
-            showError('Ошибка отправки кода: ' + err.message);
-          });
+
+        // Сохраняем имя и описание в базу данных
+        const uid = userCred.user.uid;
+        const userRef = db.ref('users').child(uid);
+        userRef.set({
+          name: name,
+          email: email,
+          description: description || '',
+          created: Date.now()
+        }).then(() => {
+          // Отправляем письмо с подтверждением
+          userCred.user.sendEmailVerification()
+            .then(() => {
+              showVerify();
+              showSuccess('Код подтверждения отправлен на ' + email);
+              window._verifyEmail = email;
+              window._verifyPassword = pass;
+              window._verifyUid = uid;
+              startVerificationCheck();
+            })
+            .catch(err => {
+              showError('Ошибка отправки кода: ' + err.message);
+            });
+        }).catch(err => {
+          showError('Ошибка сохранения данных: ' + err.message);
+        });
       })
       .catch(err => {
         registerBtn.disabled = false;
@@ -615,7 +689,6 @@
       });
   });
 
-  // Проверка подтверждения почты каждые 3 секунды
   function startVerificationCheck() {
     if (verificationInterval) clearInterval(verificationInterval);
     verificationInterval = setInterval(() => {
@@ -626,7 +699,6 @@
             verificationInterval = null;
             showSuccess('Почта подтверждена! Вход выполнен.');
             setTimeout(() => {
-              // Автоматически входим
               auth.signInWithEmailAndPassword(
                 auth.currentUser.email,
                 window._verifyPassword || ''
@@ -638,7 +710,6 @@
     }, 3000);
   }
 
-  // Подтверждение по коду (ручной ввод)
   verifyBtn.addEventListener('click', () => {
     const code = verifyCode.value.trim();
     if (!code) { showError('Введите код из письма'); return; }
@@ -674,7 +745,6 @@
     }
   });
 
-  // Повторная отправка кода
   resendCode.addEventListener('click', () => {
     if (auth.currentUser) {
       auth.currentUser.sendEmailVerification()
@@ -689,7 +759,6 @@
     }
   });
 
-  // Переключение между входом и регистрацией
   switchToRegister.addEventListener('click', () => {
     showRegister();
   });
@@ -720,7 +789,7 @@
     if (user && user.emailVerified) {
       authPage.style.display = 'none';
       app.style.display = 'flex';
-      initChat(user.email);
+      initChat(user.uid);
       if (verificationInterval) {
         clearInterval(verificationInterval);
         verificationInterval = null;
@@ -743,11 +812,23 @@
 
   // ----- ЧАТ -----
 
-  function initChat(email) {
-    currentUser = email.split('@')[0] || email;
-    document.querySelector('.discard-brand span').textContent = 'Дискард (' + currentUser + ')';
-    loadUsers();
-    setupChatListeners();
+  function initChat(uid) {
+    // Загружаем данные пользователя
+    const userRef = db.ref('users').child(uid);
+    userRef.once('value', (snap) => {
+      const data = snap.val();
+      if (data) {
+        currentUser = {
+          uid: uid,
+          name: data.name || 'Пользователь',
+          description: data.description || '',
+          email: data.email || ''
+        };
+        document.querySelector('.discard-brand span').textContent = 'Дискард (' + currentUser.name + ')';
+        loadUsers();
+        setupChatListeners();
+      }
+    });
   }
 
   function loadUsers() {
@@ -755,7 +836,9 @@
     usersRef.on('value', (snap) => {
       const data = snap.val();
       if (!data) { allUsers = []; renderChatList(); return; }
-      allUsers = Object.keys(data).filter(name => name !== currentUser);
+      allUsers = Object.keys(data)
+        .filter(uid => uid !== currentUser.uid)
+        .map(uid => ({ uid, ...data[uid] }));
       renderChatList();
     });
   }
@@ -766,42 +849,51 @@
     let list = allUsers;
     if (filter.trim() !== '') {
       const f = filter.toLowerCase().trim();
-      list = list.filter(name => name.toLowerCase().includes(f));
+      list = list.filter(user => user.name.toLowerCase().includes(f));
     }
     if (list.length === 0) {
       chatList.innerHTML = '<div class="empty-state" style="color:#6a6f78; padding:20px; text-align:center;">Никого не найдено</div>';
       return;
     }
-    list.forEach(name => {
+    list.forEach(user => {
       const div = document.createElement('div');
-      div.className = `chat-item ${currentChat === name ? 'active' : ''}`;
+      div.className = `chat-item ${currentChat === user.uid ? 'active' : ''}`;
       div.innerHTML = `
-        <div class="avatar">${name.charAt(0).toUpperCase()}</div>
-        <span class="chat-name">${name}</span>
+        <div class="avatar">${user.name.charAt(0).toUpperCase()}</div>
+        <div class="chat-info">
+          <div class="chat-name">${user.name}</div>
+          <div class="chat-desc">${user.description || 'Нет описания'}</div>
+        </div>
         <span class="chat-time">●</span>
       `;
-      div.addEventListener('click', () => openChat(name));
+      div.addEventListener('click', () => openChat(user.uid));
       chatList.appendChild(div);
     });
   }
 
-  function openChat(username) {
-    if (!username || username === currentUser) return;
-    currentChat = username;
+  function openChat(uid) {
+    if (!uid || uid === currentUser.uid) return;
+    currentChat = uid;
     renderChatList(document.getElementById('searchInput').value);
-    document.getElementById('headerName').textContent = username;
-    document.getElementById('headerAvatar').textContent = username.charAt(0).toUpperCase();
+    
+    const user = allUsers.find(u => u.uid === uid);
+    if (user) {
+      document.getElementById('headerName').textContent = user.name;
+      document.getElementById('headerDesc').textContent = user.description || '';
+      document.getElementById('headerAvatar').textContent = user.name.charAt(0).toUpperCase();
+    }
+    
     document.getElementById('msgInput').disabled = false;
     document.getElementById('sendBtn').disabled = false;
     document.getElementById('msgInput').focus();
-    loadMessages(username);
-    subscribeToMessages(username);
+    loadMessages(uid);
+    subscribeToMessages(uid);
   }
 
-  function loadMessages(username) {
+  function loadMessages(uid) {
     const chatBox = document.getElementById('chatBox');
     chatBox.innerHTML = '';
-    const chatRef = db.ref('messages').child(username).child(currentUser);
+    const chatRef = db.ref('messages').child(uid).child(currentUser.uid);
     chatRef.orderByChild('time').limitToLast(50).once('value', (snap) => {
       const data = snap.val();
       if (!data) {
@@ -813,11 +905,11 @@
     });
   }
 
-  function subscribeToMessages(username) {
+  function subscribeToMessages(uid) {
     if (chatListener) {
       chatListener.off();
     }
-    const chatRef = db.ref('messages').child(username).child(currentUser);
+    const chatRef = db.ref('messages').child(uid).child(currentUser.uid);
     chatListener = chatRef.orderByChild('time').limitToLast(1).on('child_added', (snapshot) => {
       const data = snapshot.val();
       if (!data) return;
@@ -830,14 +922,15 @@
   }
 
   function renderMessage(data) {
-    const isSelf = data.sender === currentUser;
+    const isSelf = data.sender === currentUser.uid;
     const div = document.createElement('div');
     div.className = `message ${isSelf ? 'self' : 'other'}`;
     div.setAttribute('data-id', data.id || Date.now());
 
     const userSpan = document.createElement('div');
     userSpan.className = 'msg-user';
-    userSpan.innerText = data.sender || 'Аноним';
+    const senderName = isSelf ? currentUser.name : (allUsers.find(u => u.uid === data.sender)?.name || 'Аноним');
+    userSpan.innerText = senderName;
 
     const textSpan = document.createElement('div');
     textSpan.innerText = data.text || '';
@@ -860,12 +953,12 @@
     const text = input.value.trim();
     if (!text) return;
     const newMsg = {
-      sender: currentUser,
+      sender: currentUser.uid,
       text: text,
       time: Date.now(),
       id: Date.now() + '_' + Math.random().toString(36).substr(2, 4)
     };
-    const chatRef = db.ref('messages').child(currentChat).child(currentUser);
+    const chatRef = db.ref('messages').child(currentChat).child(currentUser.uid);
     chatRef.push().set(newMsg).then(() => {
       input.value = '';
       input.focus();
@@ -884,20 +977,9 @@
         sendMessage();
       }
     });
-
-    const usersRef = db.ref('users');
-    usersRef.child(currentUser).once('value', (snap) => {
-      if (!snap.exists()) {
-        usersRef.child(currentUser).set({
-          name: currentUser,
-          email: auth.currentUser.email,
-          created: Date.now()
-        });
-      }
-    });
   }
 
-  console.log('🔥 Дискард с реальной отправкой кода на почту');
+  console.log('🔥 Дискард с именем и описанием при регистрации');
 </script>
 </body>
 </html>
