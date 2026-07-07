@@ -216,15 +216,9 @@
         .call-window.show { display: flex; }
 
         .call-window .call-avatar {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
+            width: 80px; height: 80px; border-radius: 50%;
             background: #5865f2;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 40px;
-            font-weight: 600;
+            display: flex; align-items: center; justify-content: center; font-size: 40px; font-weight: 600;
             color: #fff;
             margin-bottom: 16px;
             flex-shrink: 0;
@@ -678,6 +672,32 @@
     var isCallActive = false;
     var isIncomingCallActive = false;
 
+    // ====== ЗВУК ОЖИДАНИЯ ======
+    var ringtoneAudio = null;
+
+    function playRingtone() {
+        try {
+            ringtoneAudio = new Audio('https://videotourl.com/audio/1783403743728-653f4305-d740-4c22-8e74-9bc9a6718f05.mp3');
+            ringtoneAudio.loop = true;
+            ringtoneAudio.volume = 0.7;
+            ringtoneAudio.play().catch(function(e) {
+                console.warn('Не удалось воспроизвести гудок:', e);
+            });
+            console.log('🔊 Гудок запущен');
+        } catch(e) {
+            console.warn('Ошибка воспроизведения гудка:', e);
+        }
+    }
+
+    function stopRingtone() {
+        if (ringtoneAudio) {
+            ringtoneAudio.pause();
+            ringtoneAudio.currentTime = 0;
+            ringtoneAudio = null;
+            console.log('🔊 Гудок остановлен');
+        }
+    }
+
     var servers = {
         iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
@@ -740,9 +760,9 @@
             }
         }
 
-        // Если звоним себе — тест микрофона с эхо
+        // Если звоним себе — тест микрофона
         if (currentChat === currentUser.uid) {
-            showToast('🎤 Тест микрофона (эхо)...', 'info');
+            showToast('🎤 Тест микрофона...', 'info');
             startSelfTest(targetUser);
             return;
         }
@@ -752,6 +772,9 @@
         isCallActive = false;
         callStartTime = Date.now();
         startTimer('ringing');
+
+        // ЗАПУСКАЕМ ГУДОК
+        playRingtone();
 
         navigator.mediaDevices.getUserMedia({ audio: true, video: false })
             .then(function(stream) {
@@ -774,6 +797,7 @@
                         callStatus.textContent = '⏰ Собеседник не отвечает';
                         callTimer.className = 'call-timer ended';
                         showToast('⏰ Собеседник не отвечает', 'error');
+                        stopRingtone();
                         endCall();
                     }
                 }, 30000);
@@ -784,6 +808,7 @@
                     if (data === 'accept') {
                         answerRef.off();
                         if (callTimeout) clearTimeout(callTimeout);
+                        stopRingtone();
                         showToast('🔊 Звонок принят!', 'success');
                         isRinging = false;
                         isCallActive = true;
@@ -794,6 +819,7 @@
                     } else if (data === 'reject') {
                         answerRef.off();
                         if (callTimeout) clearTimeout(callTimeout);
+                        stopRingtone();
                         showToast('❌ Звонок отклонён', 'error');
                         callStatus.textContent = '❌ Звонок отклонён';
                         callTimer.className = 'call-timer ended';
@@ -802,13 +828,13 @@
                 });
             })
             .catch(function(err) {
+                stopRingtone();
                 showToast('❌ Ошибка: ' + err.message, 'error');
                 console.error('❌ ЗВОНОК ОШИБКА:', err);
                 endCall();
             });
     }
 
-    // ====== ТЕСТ МИКРОФОНА С ЭХО ======
     function startSelfTest(user) {
         showCallWindow(user, 'ringing');
         isRinging = true;
@@ -819,20 +845,19 @@
         navigator.mediaDevices.getUserMedia({ audio: true, video: false })
             .then(function(stream) {
                 localStream = stream;
-                showToast('🎤 Говорите! Вы услышите себя с задержкой', 'success');
+                showToast('🎤 Говорите! Вы услышите себя', 'success');
                 callStatus.textContent = '🎤 Говорите...';
                 isCallActive = true;
                 callBtn.textContent = '🔴 Положить трубку';
                 callBtn.classList.add('in-call');
                 
-                // Эхо-тест: отправляем звук обратно в динамики
                 var audioContext = new AudioContext();
                 var source = audioContext.createMediaStreamSource(stream);
                 var gainNode = audioContext.createGain();
                 gainNode.gain.value = 0.5;
                 source.connect(gainNode);
                 gainNode.connect(audioContext.destination);
-                showToast('🔊 Вы слышите себя с задержкой', 'success');
+                showToast('🔊 Вы слышите себя', 'success');
                 
                 callTimeout = setTimeout(function() {
                     showToast('⏰ Тест завершён', 'info');
@@ -976,6 +1001,7 @@
 
     function endCall() {
         console.log('📞 ЗВОНОК: Завершаем звонок');
+        stopRingtone();
         isRinging = false;
         isCallActive = false;
         isIncomingCallActive = false;
@@ -1398,6 +1424,7 @@
             try { chatListener.off(); } catch(e) {}
             chatListener = null;
         }
+        stopRingtone();
         endCall();
         db.ref('calls').off();
         callBtn.style.display = 'none';
@@ -1737,7 +1764,7 @@
         });
     }
 
-    console.log('🔥 Дискард — звук работает с TURN сервером!');
+    console.log('🔥 Дискард — с гудками при звонке!');
 </script>
 </body>
 </html>
