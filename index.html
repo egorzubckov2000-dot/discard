@@ -91,6 +91,7 @@
         .chat-item {
             display: flex; align-items: center; gap: 12px; padding: 10px 14px;
             border-radius: 14px; color: #dbdee1; cursor: pointer; transition: 0.15s; margin-bottom: 2px;
+            position: relative;
         }
         .chat-item:hover { background: #383a40; }
         .chat-item.active { background: #404249; }
@@ -102,8 +103,32 @@
         .chat-item .chat-info { flex: 1; min-width: 0; }
         .chat-item .chat-name { font-weight: 500; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .chat-item .chat-username { font-size: 12px; color: #7a7f89; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .chat-item .chat-desc { font-size: 12px; color: #7a7f89; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .chat-item .chat-time { font-size: 11px; color: #7a7f89; }
+        .chat-item .chat-time { font-size: 11px; color: #7a7f89; margin-left: auto; }
+        .chat-item .chat-actions {
+            display: none;
+            margin-left: auto;
+            color: #7a7f89;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 18px;
+            line-height: 1;
+        }
+        .chat-item:hover .chat-actions {
+            display: block;
+        }
+        .chat-item .chat-actions:hover {
+            background: #4e5058;
+            color: #f2f3f5;
+        }
+        .chat-item .chat-blocked {
+            font-size: 11px;
+            color: #e74c3c;
+            background: #4a2a2a;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-left: 8px;
+        }
 
         .discard-sidebar-footer {
             padding: 12px 14px; border-top: 1px solid #3a3c42;
@@ -501,6 +526,38 @@
             flex: 1;
         }
 
+        /* Контекстное меню */
+        .chat-menu {
+            position: fixed;
+            background: #2b2d31;
+            border-radius: 12px;
+            padding: 6px 0;
+            min-width: 190px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.8);
+            border: 1px solid #3a3c42;
+            z-index: 5000;
+            display: none;
+        }
+        .chat-menu-item {
+            padding: 10px 20px;
+            color: #f2f3f5;
+            cursor: pointer;
+            transition: 0.15s;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .chat-menu-item:hover {
+            background: #383a40;
+        }
+        .chat-menu-item.danger {
+            color: #e74c3c;
+        }
+        .chat-menu-item.danger:hover {
+            background: #4a2a2a;
+        }
+
         @media (max-width: 700px) {
             .discard-sidebar { width: 200px; }
             .modal { padding: 24px 20px; margin: 16px; }
@@ -559,10 +616,10 @@
                 <div class="icon">📡</div>
                 <span>Дискард</span>
             </div>
-            <input class="discard-search" id="searchInput" type="text" placeholder="🔍 Введите имя или @юзернейм...">
+            <input class="discard-search" id="searchInput" type="text" placeholder="🔍 Поиск пользователей...">
         </div>
         <div class="chat-list" id="chatList">
-            <div class="empty-state" style="color:#6a6f78; padding:20px; text-align:center;">👤 Введите имя или @юзернейм<br>для поиска пользователя</div>
+            <div class="empty-state" id="emptyChats">💬 Нет чатов</div>
         </div>
         <div class="discard-sidebar-footer">
             <div class="user-info">
@@ -776,6 +833,7 @@
     var isCallActive = false;
     var isIncomingCallActive = false;
     var isScreenSharing = false;
+    var blockedUsers = {};
 
     // ====== ЗВУКИ ======
     var ringtoneAudio = null;
@@ -860,10 +918,246 @@
         } catch(e) {}
     }
 
+    // ====== БЛОКИРОВКА ======
+    function loadBlocks() {
+        if (!currentUser) return;
+        db.ref('blocks').child(currentUser.uid).on('value', function(snap) {
+            var data = snap.val();
+            blockedUsers = data || {};
+            loadChats();
+        });
+    }
+
+    function blockUser(uid) {
+        if (!currentUser || !uid) return;
+        var blockRef = db.ref('blocks').child(currentUser.uid).child(uid);
+        blockRef.set(true).then(function() {
+            showToast('🚫 Пользователь заблокирован', 'info');
+            if (currentChat === uid) {
+                currentChat = null;
+                document.getElementById('headerName').textContent = 'Выберите чат';
+                document.getElementById('headerUsername').textContent = '@username';
+                headerAvatar.textContent = '👤';
+                callBtn.style.display = 'none';
+                document.getElementById('msgInput').disabled = true;
+                document.getElementById('sendBtn').disabled = true;
+                document.getElementById('chatBox').innerHTML = '<div class="empty-state">🔒 Чат заблокирован</div>';
+            }
+            loadChats();
+        }).catch(function(err) {
+            showToast('❌ Ошибка: ' + err.message, 'error');
+        });
+    }
+
+    function unblockUser(uid) {
+        if (!currentUser || !uid) return;
+        var blockRef = db.ref('blocks').child(currentUser.uid).child(uid);
+        blockRef.remove().then(function() {
+            showToast('✅ Пользователь разблокирован', 'success');
+            loadChats();
+        }).catch(function(err) {
+            showToast('❌ Ошибка: ' + err.message, 'error');
+        });
+    }
+
+    function isBlocked(uid) {
+        return blockedUsers[uid] === true;
+    }
+
+    // ====== УДАЛЕНИЕ ЧАТА ======
+    function deleteChat(uid) {
+        if (!currentUser || !uid) return;
+        if (!confirm('🗑️ Удалить всю историю чата с этим пользователем?')) return;
+        
+        var promises = [];
+        promises.push(db.ref('messages').child(currentUser.uid).child(uid).remove());
+        promises.push(db.ref('messages').child(uid).child(currentUser.uid).remove());
+        promises.push(db.ref('chats').child(currentUser.uid).child(uid).remove());
+        
+        Promise.all(promises).then(function() {
+            showToast('🗑️ Чат удалён', 'info');
+            if (currentChat === uid) {
+                currentChat = null;
+                document.getElementById('headerName').textContent = 'Выберите чат';
+                document.getElementById('headerUsername').textContent = '@username';
+                headerAvatar.textContent = '👤';
+                callBtn.style.display = 'none';
+                document.getElementById('msgInput').disabled = true;
+                document.getElementById('sendBtn').disabled = true;
+                document.getElementById('chatBox').innerHTML = '<div class="empty-state">💬 Чат удалён</div>';
+            }
+            loadChats();
+        }).catch(function(err) {
+            showToast('❌ Ошибка: ' + err.message, 'error');
+        });
+    }
+
+    // ====== ХРАНЕНИЕ ЧАТОВ ======
+    function saveChat(userId) {
+        if (!currentUser) return;
+        var chatRef = db.ref('chats').child(currentUser.uid).child(userId);
+        chatRef.update({
+            lastMessage: Date.now(),
+            userId: userId
+        });
+    }
+
+    function loadChats() {
+        if (!currentUser) return;
+        var chatsRef = db.ref('chats').child(currentUser.uid);
+        chatsRef.orderByChild('lastMessage').limitToLast(50).on('value', function(snap) {
+            var data = snap.val();
+            if (!data) {
+                document.getElementById('chatList').innerHTML = '<div class="empty-state">💬 Нет чатов</div>';
+                return;
+            }
+            var keys = Object.keys(data);
+            var chatIds = [];
+            for (var i = 0; i < keys.length; i++) {
+                var uid = keys[i];
+                if (isBlocked(uid)) continue;
+                chatIds.push({
+                    uid: uid,
+                    lastMessage: data[uid].lastMessage || 0
+                });
+            }
+            chatIds.sort(function(a, b) { return b.lastMessage - a.lastMessage; });
+            
+            if (chatIds.length === 0) {
+                document.getElementById('chatList').innerHTML = '<div class="empty-state">💬 Нет чатов</div>';
+                return;
+            }
+            
+            renderChatList(chatIds);
+        });
+    }
+
+    function renderChatList(chatIds) {
+        var chatList = document.getElementById('chatList');
+        chatList.innerHTML = '';
+        
+        var usersRef = db.ref('users');
+        usersRef.once('value', function(snap) {
+            var users = snap.val();
+            if (!users) {
+                chatList.innerHTML = '<div class="empty-state">💬 Нет пользователей</div>';
+                return;
+            }
+            
+            var found = false;
+            for (var i = 0; i < chatIds.length; i++) {
+                var uid = chatIds[i].uid;
+                var user = users[uid];
+                if (!user) continue;
+                if (isBlocked(uid)) continue;
+                
+                found = true;
+                var div = document.createElement('div');
+                var isActive = (currentChat === uid) ? 'active' : '';
+                div.className = 'chat-item ' + isActive;
+                div.dataset.uid = uid;
+                
+                var blockedBadge = isBlocked(uid) ? '<span class="chat-blocked">🚫</span>' : '';
+                
+                div.innerHTML = 
+                    '<div class="avatar">' + (user.avatar || '👤') + '</div>' +
+                    '<div class="chat-info">' +
+                    '<div class="chat-name">' + user.name + ' ' + blockedBadge + '</div>' +
+                    '<div class="chat-username">@' + user.username + '</div>' +
+                    '</div>' +
+                    '<div class="chat-actions" data-uid="' + uid + '">⋮</div>';
+                
+                // Клик по чату
+                div.addEventListener('click', function(e) {
+                    if (e.target.classList.contains('chat-actions')) return;
+                    var targetUid = this.dataset.uid;
+                    if (isBlocked(targetUid)) {
+                        showToast('🔒 Пользователь заблокирован', 'error');
+                        return;
+                    }
+                    openChat(targetUid);
+                });
+                
+                // Меню действий
+                var actionsBtn = div.querySelector('.chat-actions');
+                actionsBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    showChatMenu(e, this.dataset.uid);
+                });
+                
+                chatList.appendChild(div);
+            }
+            
+            if (!found) {
+                chatList.innerHTML = '<div class="empty-state">💬 Нет чатов</div>';
+            }
+        });
+    }
+
+    // ====== МЕНЮ ДЕЙСТВИЙ ======
+    var chatMenu = document.createElement('div');
+    chatMenu.className = 'chat-menu';
+    chatMenu.id = 'chatMenu';
+    chatMenu.style.display = 'none';
+    document.body.appendChild(chatMenu);
+
+    chatMenu.innerHTML = 
+        '<div class="chat-menu-item" id="menuDelete">🗑️ Удалить чат</div>' +
+        '<div class="chat-menu-item danger" id="menuBlock">🚫 Заблокировать</div>' +
+        '<div class="chat-menu-item" id="menuUnblock" style="display:none;">✅ Разблокировать</div>';
+
+    var currentMenuUid = null;
+
+    function showChatMenu(event, uid) {
+        currentMenuUid = uid;
+        chatMenu.style.display = 'block';
+        chatMenu.style.left = Math.min(event.clientX - 100, window.innerWidth - 200) + 'px';
+        chatMenu.style.top = Math.min(event.clientY - 20, window.innerHeight - 100) + 'px';
+        
+        var menuBlock = document.getElementById('menuBlock');
+        var menuUnblock = document.getElementById('menuUnblock');
+        
+        if (isBlocked(uid)) {
+            menuBlock.style.display = 'none';
+            menuUnblock.style.display = 'flex';
+        } else {
+            menuBlock.style.display = 'flex';
+            menuUnblock.style.display = 'none';
+        }
+    }
+
+    document.addEventListener('click', function(e) {
+        if (!chatMenu.contains(e.target) && !e.target.classList.contains('chat-actions')) {
+            chatMenu.style.display = 'none';
+        }
+    });
+
+    document.getElementById('menuDelete').addEventListener('click', function() {
+        if (!currentMenuUid) return;
+        deleteChat(currentMenuUid);
+        chatMenu.style.display = 'none';
+    });
+
+    document.getElementById('menuBlock').addEventListener('click', function() {
+        if (!currentMenuUid) return;
+        blockUser(currentMenuUid);
+        chatMenu.style.display = 'none';
+    });
+
+    document.getElementById('menuUnblock').addEventListener('click', function() {
+        if (!currentMenuUid) return;
+        unblockUser(currentMenuUid);
+        chatMenu.style.display = 'none';
+    });
+
     // ====== ЗВОНКИ ======
     function startCall() {
         if (!currentChat || currentChat === null || currentChat === 'null' || currentChat === undefined) {
             showToast('❌ Выберите собеседника', 'error');
+            return;
+        }
+        if (isBlocked(currentChat)) {
+            showToast('🔒 Пользователь заблокирован', 'error');
             return;
         }
         if (isInCall) {
@@ -1015,7 +1309,7 @@
             });
     }
 
-    // ====== ТРАНСЛЯЦИЯ ЭКРАНА (С ПЕРЕСОЗДАНИЕМ OFFER) ======
+    // ====== ТРАНСЛЯЦИЯ ЭКРАНА ======
     function toggleScreenShare() {
         if (!isCallActive) {
             showToast('❌ Сначала начните звонок', 'error');
@@ -1023,7 +1317,6 @@
         }
 
         if (isScreenSharing) {
-            // Останавливаем трансляцию
             if (screenStream) {
                 screenStream.getTracks().forEach(function(track) {
                     track.stop();
@@ -1036,7 +1329,6 @@
             screenPreview.classList.remove('active');
             screenPreviewVideo.srcObject = null;
             showToast('🛑 Трансляция экрана остановлена', 'info');
-            // Пересоздаём offer без видео
             if (peerConnection) {
                 var senders = peerConnection.getSenders();
                 senders.forEach(function(sender) {
@@ -1044,13 +1336,11 @@
                         peerConnection.removeTrack(sender);
                     }
                 });
-                // Пересоздаём offer
                 renegotiate();
             }
             return;
         }
 
-        // Запускаем трансляцию экрана
         navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
             .then(function(stream) {
                 screenStream = stream;
@@ -1058,30 +1348,22 @@
                 screenBtn.textContent = '🛑 Остановить';
                 screenBtn.classList.add('active');
                 
-                // Показываем превью экрана (ЛОКАЛЬНЫЙ ПРОСМОТР)
                 screenPreview.classList.add('active');
                 screenPreviewVideo.srcObject = stream;
                 screenPreviewVideo.play();
                 
                 showToast('🖥️ Трансляция экрана начата!', 'success');
                 
-                // ДОБАВЛЯЕМ ВИДЕО-ТРЕК В WEBRTC
                 if (peerConnection) {
                     var videoTrack = stream.getVideoTracks()[0];
                     if (videoTrack) {
-                        // Добавляем новый трек
-                        var sender = peerConnection.addTrack(videoTrack, stream);
-                        console.log('✅ Видео-трек добавлен в WebRTC');
+                        peerConnection.addTrack(videoTrack, stream);
                     }
                     var audioTrack = stream.getAudioTracks()[0];
                     if (audioTrack) {
                         peerConnection.addTrack(audioTrack, stream);
-                        console.log('✅ Аудио-трек добавлен в WebRTC');
                     }
-                    // ПЕРЕСОЗДАЁМ OFFER, ЧТОБЫ СОБЕСЕДНИК ПОЛУЧИЛ НОВЫЙ SDP
                     renegotiate();
-                } else {
-                    console.warn('⚠️ peerConnection отсутствует');
                 }
             })
             .catch(function(err) {
@@ -1096,7 +1378,6 @@
 
     function renegotiate() {
         if (!peerConnection) return;
-        console.log('🔄 Пересоздаём offer');
         peerConnection.createOffer()
             .then(function(offer) {
                 return peerConnection.setLocalDescription(offer);
@@ -1107,9 +1388,6 @@
                     type: peerConnection.localDescription.type
                 });
             })
-            .then(function() {
-                console.log('✅ Offer обновлён');
-            })
             .catch(function(err) {
                 console.error('❌ Ошибка пересоздания offer:', err);
             });
@@ -1118,7 +1396,6 @@
     screenBtn.addEventListener('click', toggleScreenShare);
 
     function startPeerConnection(isCaller) {
-        console.log('🔊 ЗВОНОК: Начинаем WebRTC, isCaller=', isCaller);
         if (peerConnection) {
             peerConnection.close();
             peerConnection = null;
@@ -1227,7 +1504,6 @@
                         console.warn('⚠️ ICE ошибка:', err);
                     });
             } else if (data) {
-                console.log('⏳ ICE кандидат отложен');
                 setTimeout(function() {
                     if (peerConnection && peerConnection.remoteDescription) {
                         var candidate = new RTCIceCandidate(data);
@@ -1239,7 +1515,6 @@
     }
 
     function endCall() {
-        console.log('📞 ЗВОНОК: Завершаем звонок');
         stopRingtone();
         stopIncomingRingtone();
         callAvatar.classList.remove('blink');
@@ -1357,20 +1632,21 @@
         closeCallWindow();
     });
 
-    // ====== ОБРАБОТЧИК КЛИКА ПО АВАТАРКЕ ДЛЯ ДЕМОНСТРАЦИИ ЭКРАНА ======
+    // ====== КЛИК ПО АВАТАРКЕ ======
     headerAvatar.addEventListener('click', function() {
         if (!currentChat) {
             showToast('❌ Выберите собеседника', 'error');
             return;
         }
+        if (isBlocked(currentChat)) {
+            showToast('🔒 Пользователь заблокирован', 'error');
+            return;
+        }
         if (isCallActive) {
-            // Если звонок уже идёт — включаем демонстрацию экрана
             toggleScreenShare();
         } else {
-            // Иначе предлагаем позвонить и показать экран
             if (confirm('📞 Начать звонок с демонстрацией экрана?')) {
                 startCall();
-                // После установки соединения автоматически включим экран
                 var checkInterval = setInterval(function() {
                     if (isCallActive) {
                         clearInterval(checkInterval);
@@ -1395,6 +1671,7 @@
             var data = snap.val();
             var callerUid = snap.key;
             if (data.from === currentUser.uid) return;
+            if (isBlocked(callerUid)) return;
             
             playNotificationSound();
             playIncomingRingtone();
@@ -1753,6 +2030,7 @@
                 document.getElementById('sidebarUserUsername').textContent = '@' + currentUser.username;
                 headerAvatar.textContent = currentUser.avatar || '👤';
                 
+                loadBlocks();
                 loadUsers();
                 setupChatListeners();
                 setupSettings();
@@ -1768,7 +2046,6 @@
             var data = snap.val();
             if (!data) {
                 allUsers = [];
-                renderChatList('');
                 return;
             }
             var keys = Object.keys(data);
@@ -1782,26 +2059,31 @@
                 }
             }
             allUsers = result;
-            renderChatList(document.getElementById('searchInput').value);
+            // Обновляем поиск если он активен
+            var searchVal = document.getElementById('searchInput').value;
+            if (searchVal && searchVal.trim() !== '') {
+                searchUsers(searchVal);
+            }
         });
     }
 
-    function renderChatList(filter) {
+    function searchUsers(query) {
         var chatList = document.getElementById('chatList');
         chatList.innerHTML = '';
         
-        if (!filter || filter.trim() === '') {
-            chatList.innerHTML = '<div class="empty-state" style="color:#6a6f78; padding:20px; text-align:center;">👤 Введите имя или @юзернейм<br>для поиска пользователя</div>';
+        if (!query || query.trim() === '') {
+            loadChats();
             return;
         }
         
-        var f = filter.toLowerCase().trim();
+        var f = query.toLowerCase().trim();
         var list = allUsers.filter(function(user) {
+            if (isBlocked(user.uid)) return false;
             return user.name.toLowerCase().includes(f) || user.username.toLowerCase().includes(f);
         });
         
         if (list.length === 0) {
-            chatList.innerHTML = '<div class="empty-state" style="color:#6a6f78; padding:20px; text-align:center;">❌ Пользователь не найден</div>';
+            chatList.innerHTML = '<div class="empty-state">❌ Пользователь не найден</div>';
             return;
         }
         
@@ -1810,15 +2092,22 @@
             var div = document.createElement('div');
             var isActive = (currentChat === user.uid) ? 'active' : '';
             div.className = 'chat-item ' + isActive;
-            div.innerHTML = '<div class="avatar">' + (user.avatar || '👤') + '</div>' +
+            div.dataset.uid = user.uid;
+            div.innerHTML = 
+                '<div class="avatar">' + (user.avatar || '👤') + '</div>' +
                 '<div class="chat-info">' +
                 '<div class="chat-name">' + user.name + '</div>' +
                 '<div class="chat-username">@' + user.username + '</div>' +
                 '<div class="chat-desc">' + (user.description || 'Нет описания') + '</div>' +
-                '</div>' +
-                '<span class="chat-time">●</span>';
+                '</div>';
             div.addEventListener('click', function(u) {
-                return function() { openChat(u.uid); };
+                return function() { 
+                    if (isBlocked(u.uid)) {
+                        showToast('🔒 Пользователь заблокирован', 'error');
+                        return;
+                    }
+                    openChat(u.uid); 
+                };
             }(user));
             chatList.appendChild(div);
         }
@@ -1826,9 +2115,18 @@
 
     function openChat(uid) {
         if (!uid) return;
+        if (isBlocked(uid)) {
+            showToast('🔒 Пользователь заблокирован', 'error');
+            return;
+        }
+        
         currentChat = uid;
         var searchInput = document.getElementById('searchInput');
-        renderChatList(searchInput.value);
+        if (searchInput.value.trim() === '') {
+            loadChats();
+        } else {
+            searchUsers(searchInput.value);
+        }
 
         var user = null;
         for (var i = 0; i < allUsers.length; i++) {
@@ -1888,10 +2186,14 @@
         chatListener = chatRef.orderByChild('time').limitToLast(1).on('child_added', function(snapshot) {
             var data = snapshot.val();
             if (!data) return;
+            // Проверяем, не заблокирован ли отправитель
+            if (isBlocked(data.sender)) return;
             var existing = document.getElementById('chatBox').querySelector('[data-id="' + snapshot.key + '"]');
             if (!existing) {
                 renderMessage(data);
                 document.getElementById('chatBox').scrollTop = document.getElementById('chatBox').scrollHeight;
+                // Сохраняем чат в список
+                saveChat(uid);
             }
         });
     }
@@ -1934,6 +2236,11 @@
 
     function sendMessage() {
         if (!currentChat) return;
+        if (isBlocked(currentChat)) {
+            showToast('🔒 Пользователь заблокирован', 'error');
+            return;
+        }
+        
         var input = document.getElementById('msgInput');
         var text = input.value.trim();
         if (!text) return;
@@ -1950,13 +2257,21 @@
         var chatRef2 = db.ref('messages').child(currentUser.uid).child(currentChat);
         chatRef2.push().set(newMsg);
 
+        // Сохраняем чат
+        saveChat(currentChat);
+
         input.value = '';
         input.focus();
     }
 
     function setupChatListeners() {
         document.getElementById('searchInput').addEventListener('input', function(e) {
-            renderChatList(e.target.value);
+            var val = e.target.value.trim();
+            if (val === '') {
+                loadChats();
+            } else {
+                searchUsers(val);
+            }
         });
         document.getElementById('sendBtn').addEventListener('click', sendMessage);
         document.getElementById('msgInput').addEventListener('keydown', function(e) {
@@ -2066,7 +2381,7 @@
                         settingsSaved.style.display = 'none';
                     }, 3000);
                     showToast('✅ Настройки сохранены', 'success');
-                    renderChatList(document.getElementById('searchInput').value);
+                    loadChats();
                 })
                 .catch(function(err) {
                     settingsError.textContent = 'Ошибка: ' + err.message;
@@ -2079,7 +2394,7 @@
         });
     }
 
-    console.log('🔥 Дискард — демонстрация экрана по клику на аватарку!');
+    console.log('🔥 Дискард — с историей чатов, удалением и блокировкой!');
 </script>
 </body>
 </html>
