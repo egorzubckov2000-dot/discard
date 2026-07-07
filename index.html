@@ -254,48 +254,21 @@
         }
 
         .call-window .call-actions {
-            display: flex;
-            gap: 16px;
-            width: 100%;
-            justify-content: center;
+            display: flex; gap: 16px; width: 100%; justify-content: center;
         }
         .call-window .call-actions button {
-            border: none;
-            padding: 12px 28px;
-            border-radius: 40px;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: 0.15s;
-            flex: 1;
+            border: none; padding: 12px 28px; border-radius: 40px; font-size: 15px; font-weight: 600; cursor: pointer; transition: 0.15s; flex: 1;
         }
-        .call-window .call-actions .hangup {
-            background: #e74c3c;
-            color: #fff;
-        }
+        .call-window .call-actions .hangup { background: #e74c3c; color: #fff; }
         .call-window .call-actions .hangup:hover { background: #c0392b; }
-        .call-window .call-actions .close-btn {
-            background: #3a3c42;
-            color: #b5bac1;
-        }
+        .call-window .call-actions .close-btn { background: #3a3c42; color: #b5bac1; }
         .call-window .call-actions .close-btn:hover { background: #4e5058; color: #fff; }
 
         .toast {
-            position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #2b2d31;
-            padding: 14px 28px;
-            border-radius: 16px;
-            color: #f2f3f5;
-            font-size: 15px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-            display: none;
-            z-index: 4000;
-            border-left: 4px solid #5865f2;
-            max-width: 90%;
-            text-align: center;
+            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+            background: #2b2d31; padding: 14px 28px; border-radius: 16px; color: #f2f3f5; font-size: 15px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5); display: none; z-index: 4000;
+            border-left: 4px solid #5865f2; max-width: 90%; text-align: center;
         }
         .toast.show { display: block; animation: toastAnim 0.3s ease; }
         .toast.error { border-left-color: #e74c3c; }
@@ -308,45 +281,20 @@
         }
 
         .incoming-call {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.85);
-            backdrop-filter: blur(6px);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 2000;
-            flex-direction: column;
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.85); backdrop-filter: blur(6px);
+            display: none; justify-content: center; align-items: center; z-index: 2000; flex-direction: column;
         }
         .incoming-call.show { display: flex; }
         .incoming-call .call-box {
-            background: #2b2d31;
-            padding: 40px 50px;
-            border-radius: 28px;
-            text-align: center;
-            color: #f2f3f5;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
-            max-width: 400px;
-            width: 100%;
+            background: #2b2d31; padding: 40px 50px; border-radius: 28px; text-align: center;
+            color: #f2f3f5; box-shadow: 0 20px 60px rgba(0,0,0,0.8); max-width: 400px; width: 100%;
         }
         .incoming-call .call-box h2 { font-size: 28px; margin-bottom: 8px; }
         .incoming-call .call-box p { color: #7a7f89; margin-bottom: 24px; font-size: 16px; }
-        .incoming-call .call-box .call-actions {
-            display: flex;
-            gap: 16px;
-            justify-content: center;
-        }
+        .incoming-call .call-box .call-actions { display: flex; gap: 16px; justify-content: center; }
         .incoming-call .call-box .call-actions button {
-            border: none;
-            padding: 12px 32px;
-            border-radius: 40px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: 0.15s;
+            border: none; padding: 12px 32px; border-radius: 40px; font-size: 16px; font-weight: 600; cursor: pointer; transition: 0.15s;
         }
         .incoming-call .call-box .call-actions .accept { background: #2ecc71; color: #fff; }
         .incoming-call .call-box .call-actions .accept:hover { background: #27ae60; }
@@ -360,21 +308,15 @@
         }
         .modal-overlay.show { display: flex; }
         .modal {
-            background: #2b2d31; border-radius: 24px; padding: 32px 36px;
-            max-width: 520px; width: 100%; color: #f2f3f5;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
-            max-height: 90vh;
-            overflow-y: auto;
+            background: #2b2d31; border-radius: 24px; padding: 32px 36px; max-width: 520px; width: 100%;
+            color: #f2f3f5; box-shadow: 0 20px 60px rgba(0,0,0,0.8); max-height: 90vh; overflow-y: auto;
         }
         .modal h2 { font-size: 24px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; }
         .modal h2 .icon { font-size: 28px; }
-        .modal-tabs {
-            display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid #3a3c42;
-        }
+        .modal-tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid #3a3c42; }
         .modal-tabs button {
-            background: transparent; border: none; color: #b5bac1;
-            padding: 10px 16px; cursor: pointer; font-size: 14px; font-weight: 500;
-            border-bottom: 2px solid transparent; transition: 0.2s;
+            background: transparent; border: none; color: #b5bac1; padding: 10px 16px; cursor: pointer;
+            font-size: 14px; font-weight: 500; border-bottom: 2px solid transparent; transition: 0.2s;
         }
         .modal-tabs button:hover { color: #f2f3f5; }
         .modal-tabs button.active { color: #5865f2; border-bottom-color: #5865f2; }
@@ -389,31 +331,26 @@
         .modal textarea { resize: vertical; min-height: 60px; font-family: inherit; }
         .modal select option { background: #2b2d31; }
         .modal .btn-save {
-            background: #5865f2; border: none; color: white; font-weight: 600;
-            padding: 14px; border-radius: 12px; font-size: 16px; cursor: pointer;
-            width: 100%; margin-top: 20px; transition: 0.15s;
+            background: #5865f2; border: none; color: white; font-weight: 600; padding: 14px;
+            border-radius: 12px; font-size: 16px; cursor: pointer; width: 100%; margin-top: 20px; transition: 0.15s;
         }
         .modal .btn-save:hover { background: #4752c4; }
         .modal .btn-close {
-            background: #3a3c42; border: none; color: #b5bac1;
-            padding: 10px; border-radius: 10px; cursor: pointer; width: 100%; margin-top: 8px;
-            font-size: 14px; transition: 0.15s;
+            background: #3a3c42; border: none; color: #b5bac1; padding: 10px; border-radius: 10px; cursor: pointer;
+            width: 100%; margin-top: 8px; font-size: 14px; transition: 0.15s;
         }
         .modal .btn-close:hover { background: #4e5058; color: #fff; }
         .modal .saved-toast {
-            background: #1e4a3a; color: #a3e0c0; padding: 10px 14px;
-            border-radius: 10px; font-size: 14px; display: none; margin-top: 12px;
-            border-left: 4px solid #2ecc71;
+            background: #1e4a3a; color: #a3e0c0; padding: 10px 14px; border-radius: 10px;
+            font-size: 14px; display: none; margin-top: 12px; border-left: 4px solid #2ecc71;
         }
         .modal .error-toast {
-            background: #4a2a2a; color: #f5a3a3; padding: 10px 14px;
-            border-radius: 10px; font-size: 14px; display: none; margin-top: 12px;
-            border-left: 4px solid #e74c3c;
+            background: #4a2a2a; color: #f5a3a3; padding: 10px 14px; border-radius: 10px;
+            font-size: 14px; display: none; margin-top: 12px; border-left: 4px solid #e74c3c;
         }
         .modal .audio-test-btn {
-            background: #3a3c42; border: none; color: #f2f3f5;
-            padding: 8px 16px; border-radius: 8px; cursor: pointer; margin-top: 8px;
-            font-size: 13px; transition: 0.2s;
+            background: #3a3c42; border: none; color: #f2f3f5; padding: 8px 16px; border-radius: 8px;
+            cursor: pointer; margin-top: 8px; font-size: 13px; transition: 0.2s;
         }
         .modal .audio-test-btn:hover { background: #4e5058; }
 
@@ -671,9 +608,11 @@
     var isIncomingCallActive = false;
 
     // ====== ЗВУКИ ======
-    var ringtoneAudio = null;
-    var endCallAudio = null;
+    var ringtoneAudio = null;       // Гудок для звонящего (звук ожидания)
+    var incomingRingtoneAudio = null; // Звук входящего для собеседника
+    var endCallAudio = null;        // Звук завершения для звонящего
 
+    // Гудок для звонящего (30 сек)
     function playRingtone() {
         try {
             ringtoneAudio = new Audio('https://videotourl.com/audio/1783403743728-653f4305-d740-4c22-8e74-9bc9a6718f05.mp3');
@@ -682,7 +621,7 @@
             ringtoneAudio.play().catch(function(e) {
                 console.warn('Не удалось воспроизвести гудок:', e);
             });
-            console.log('🔊 Гудок запущен');
+            console.log('🔊 Гудок запущен (для звонящего)');
         } catch(e) {
             console.warn('Ошибка воспроизведения гудка:', e);
         }
@@ -697,6 +636,31 @@
         }
     }
 
+    // Звук входящего для собеседника (повторяется)
+    function playIncomingRingtone() {
+        try {
+            incomingRingtoneAudio = new Audio('https://videotourl.com/audio/1783404587641-324cb027-da79-47e3-a2d6-4d7e6bf7e6cd.mp3');
+            incomingRingtoneAudio.loop = true;
+            incomingRingtoneAudio.volume = 0.7;
+            incomingRingtoneAudio.play().catch(function(e) {
+                console.warn('Не удалось воспроизвести звук входящего:', e);
+            });
+            console.log('🔊 Звук входящего запущен (для собеседника)');
+        } catch(e) {
+            console.warn('Ошибка воспроизведения звука входящего:', e);
+        }
+    }
+
+    function stopIncomingRingtone() {
+        if (incomingRingtoneAudio) {
+            incomingRingtoneAudio.pause();
+            incomingRingtoneAudio.currentTime = 0;
+            incomingRingtoneAudio = null;
+            console.log('🔊 Звук входящего остановлен');
+        }
+    }
+
+    // Звук завершения для звонящего (1 раз)
     function playEndCallSound() {
         try {
             endCallAudio = new Audio('https://videotourl.com/audio/1783404137448-4d558e91-f873-46fb-9bfa-f1d343d45ff4.mp3');
@@ -705,7 +669,7 @@
             endCallAudio.play().catch(function(e) {
                 console.warn('Не удалось воспроизвести звук завершения:', e);
             });
-            console.log('🔊 Звук завершения звонка запущен');
+            console.log('🔊 Звук завершения звонка запущен (для звонящего)');
         } catch(e) {
             console.warn('Ошибка воспроизведения звука завершения:', e);
         }
@@ -786,7 +750,7 @@
         callStartTime = Date.now();
         startTimer('ringing');
 
-        // ЗАПУСКАЕМ ГУДОК
+        // ЗАПУСКАЕМ ГУДОК (для звонящего)
         playRingtone();
 
         navigator.mediaDevices.getUserMedia({ audio: true, video: false })
@@ -811,7 +775,7 @@
                         callTimer.className = 'call-timer ended';
                         showToast('⏰ Собеседник не отвечает', 'error');
                         stopRingtone();
-                        playEndCallSound();
+                        playEndCallSound(); // Звук завершения
                         endCall();
                     }
                 }, 30000);
@@ -834,7 +798,7 @@
                         answerRef.off();
                         if (callTimeout) clearTimeout(callTimeout);
                         stopRingtone();
-                        playEndCallSound();
+                        playEndCallSound(); // Звук завершения
                         showToast('❌ Звонок отклонён', 'error');
                         callStatus.textContent = '❌ Звонок отклонён';
                         callTimer.className = 'call-timer ended';
@@ -844,7 +808,7 @@
             })
             .catch(function(err) {
                 stopRingtone();
-                playEndCallSound();
+                playEndCallSound(); // Звук завершения
                 showToast('❌ Ошибка: ' + err.message, 'error');
                 console.error('❌ ЗВОНОК ОШИБКА:', err);
                 endCall();
@@ -877,13 +841,13 @@
                 
                 callTimeout = setTimeout(function() {
                     showToast('⏰ Тест завершён', 'info');
-                    playEndCallSound();
+                    playEndCallSound(); // Звук завершения
                     endCall();
                 }, 30000);
             })
             .catch(function(err) {
                 showToast('❌ Ошибка микрофона: ' + err.message, 'error');
-                playEndCallSound();
+                playEndCallSound(); // Звук завершения
                 endCall();
             });
     }
@@ -939,7 +903,7 @@
                 showToast('🔊 Соединение установлено!', 'success');
             } else if (peerConnection.connectionState === 'failed') {
                 showToast('❌ Соединение разорвано', 'error');
-                playEndCallSound();
+                playEndCallSound(); // Звук завершения
                 endCall();
             }
         };
@@ -1021,6 +985,7 @@
     function endCall() {
         console.log('📞 ЗВОНОК: Завершаем звонок');
         stopRingtone();
+        stopIncomingRingtone();
         // Проигрываем звук завершения, если звонок был активен
         if (isCallActive || isRinging) {
             playEndCallSound();
@@ -1123,6 +1088,8 @@
             if (data.from === currentUser.uid) return;
             
             playNotificationSound();
+            // ЗАПУСКАЕМ ЗВУК ВХОДЯЩЕГО ДЛЯ СОБЕСЕДНИКА
+            playIncomingRingtone();
             showToast('📞 Входящий звонок от ' + (data.fromName || 'Неизвестного'), 'info');
             
             incomingCall.classList.add('show');
@@ -1139,6 +1106,7 @@
         var callData = window._incomingCallData;
         if (!callData) return;
         incomingCall.classList.remove('show');
+        stopIncomingRingtone(); // Останавливаем звук входящего
         currentChat = callData.callerUid;
         callReceiverUid = callData.callerUid;
         isIncomingCallActive = false;
@@ -1170,7 +1138,8 @@
         if (callData) {
             db.ref('calls').child(callData.callerUid).child('answer').set('reject');
             showToast('❌ Звонок отклонён', 'error');
-            playEndCallSound();
+            stopIncomingRingtone(); // Останавливаем звук входящего
+            // У собеседника НЕ играет звук завершения при отклонении (он у звонящего)
         }
         incomingCall.classList.remove('show');
         window._incomingCallData = null;
@@ -1449,6 +1418,7 @@
             chatListener = null;
         }
         stopRingtone();
+        stopIncomingRingtone();
         endCall();
         db.ref('calls').off();
         callBtn.style.display = 'none';
@@ -1788,7 +1758,7 @@
         });
     }
 
-    console.log('🔥 Дискард — с гудками и звуком завершения звонка!');
+    console.log('🔥 Дискард — с тремя звуками: гудок, входящий, завершение!');
 </script>
 </body>
 </html>
