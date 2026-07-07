@@ -295,6 +295,25 @@
         }
         .call-window .call-actions .screen-btn.active:hover { background: #d35400; }
 
+        .call-window .screen-preview {
+            width: 100%;
+            max-height: 120px;
+            background: #1e1f22;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            overflow: hidden;
+            display: none;
+            border: 1px solid #3a3c42;
+        }
+        .call-window .screen-preview video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .call-window .screen-preview.active {
+            display: block;
+        }
+
         .toast {
             position: fixed;
             bottom: 30px;
@@ -467,14 +486,9 @@
             margin: 8px 0;
         }
         .modal .avatar-preview .preview-box {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
+            width: 50px; height: 50px; border-radius: 50%;
             background: #383a40;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 28px;
+            display: flex; align-items: center; justify-content: center; font-size: 28px;
             border: 2px solid #5865f2;
         }
         .modal .avatar-preview input {
@@ -488,6 +502,7 @@
             .incoming-call .call-box { padding: 24px 20px; }
             .toast { font-size: 14px; padding: 12px 20px; }
             .call-window .call-actions button { font-size: 12px; padding: 8px 12px; min-width: 60px; }
+            .call-window .screen-preview { max-height: 80px; }
         }
     </style>
 </head>
@@ -583,6 +598,12 @@
     <div class="call-username" id="callUsername">@username</div>
     <div class="call-status" id="callStatus">📞 Вызов...</div>
     <div class="call-timer ringing" id="callTimer">00:00</div>
+    
+    <!-- Превью экрана (локальный просмотр) -->
+    <div class="screen-preview" id="screenPreview">
+        <video id="screenPreviewVideo" autoplay muted playsinline></video>
+    </div>
+    
     <div class="call-actions">
         <button class="hangup" id="hangupBtn">📞 Положить</button>
         <button class="close-btn" id="closeCallBtn">✖ Закрыть</button>
@@ -724,6 +745,8 @@
     var hangupBtn = document.getElementById('hangupBtn');
     var closeCallBtn = document.getElementById('closeCallBtn');
     var screenBtn = document.getElementById('screenBtn');
+    var screenPreview = document.getElementById('screenPreview');
+    var screenPreviewVideo = document.getElementById('screenPreviewVideo');
 
     var headerAvatar = document.getElementById('headerAvatar');
     var sidebarUserName = document.getElementById('sidebarUserName');
@@ -987,7 +1010,7 @@
             });
     }
 
-    // ====== ТРАНСЛЯЦИЯ ЭКРАНА ======
+    // ====== ТРАНСЛЯЦИЯ ЭКРАНА С ПРЕВЬЮ ======
     function toggleScreenShare() {
         if (!isCallActive) {
             showToast('❌ Сначала начните звонок', 'error');
@@ -1005,6 +1028,8 @@
             isScreenSharing = false;
             screenBtn.textContent = '🖥️ Экран';
             screenBtn.classList.remove('active');
+            screenPreview.classList.remove('active');
+            screenPreviewVideo.srcObject = null;
             showToast('🛑 Трансляция экрана остановлена', 'info');
             // Переключаемся обратно на микрофон
             if (localStream && peerConnection) {
@@ -1025,6 +1050,12 @@
                 isScreenSharing = true;
                 screenBtn.textContent = '🛑 Остановить';
                 screenBtn.classList.add('active');
+                
+                // Показываем превью экрана (ЛОКАЛЬНЫЙ ПРОСМОТР)
+                screenPreview.classList.add('active');
+                screenPreviewVideo.srcObject = stream;
+                screenPreviewVideo.play();
+                
                 showToast('🖥️ Трансляция экрана начата!', 'success');
                 
                 // Добавляем видео-трек к существующему соединению
@@ -1032,7 +1063,6 @@
                     var videoTrack = stream.getVideoTracks()[0];
                     if (videoTrack) {
                         var senders = peerConnection.getSenders();
-                        // Ищем существующий видео-трек и заменяем его
                         var existingVideoSender = null;
                         senders.forEach(function(sender) {
                             if (sender.track && sender.track.kind === 'video') {
@@ -1052,6 +1082,8 @@
                 isScreenSharing = false;
                 screenBtn.textContent = '🖥️ Экран';
                 screenBtn.classList.remove('active');
+                screenPreview.classList.remove('active');
+                screenPreviewVideo.srcObject = null;
             });
     }
 
@@ -1187,6 +1219,8 @@
         isScreenSharing = false;
         screenBtn.textContent = '🖥️ Экран';
         screenBtn.classList.remove('active');
+        screenPreview.classList.remove('active');
+        screenPreviewVideo.srcObject = null;
         
         if (isCallActive || isRinging) {
             playEndCallSound();
@@ -1236,12 +1270,6 @@
             callStatus.textContent = '🔊 Разговор...';
             callTimer.className = 'call-timer';
         }
-        // Показываем кнопку экрана только во время разговора
-        if (mode === 'call') {
-            screenBtn.style.display = 'block';
-        } else {
-            screenBtn.style.display = 'block';
-        }
     }
 
     function closeCallWindow() {
@@ -1255,6 +1283,8 @@
         screenBtn.textContent = '🖥️ Экран';
         screenBtn.classList.remove('active');
         isScreenSharing = false;
+        screenPreview.classList.remove('active');
+        screenPreviewVideo.srcObject = null;
         if (screenStream) {
             screenStream.getTracks().forEach(function(t) { t.stop(); });
             screenStream = null;
@@ -1986,7 +2016,7 @@
         });
     }
 
-    console.log('🔥 Дискард — с трансляцией экрана!');
+    console.log('🔥 Дискард — с просмотром своего экрана!');
 </script>
 </body>
 </html>
