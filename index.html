@@ -259,19 +259,21 @@
 
         .call-window .call-actions {
             display: flex;
-            gap: 16px;
+            gap: 8px;
+            flex-wrap: wrap;
             width: 100%;
             justify-content: center;
         }
         .call-window .call-actions button {
             border: none;
-            padding: 12px 28px;
+            padding: 10px 16px;
             border-radius: 40px;
-            font-size: 15px;
+            font-size: 13px;
             font-weight: 600;
             cursor: pointer;
             transition: 0.15s;
             flex: 1;
+            min-width: 70px;
         }
         .call-window .call-actions .hangup {
             background: #e74c3c;
@@ -283,6 +285,15 @@
             color: #b5bac1;
         }
         .call-window .call-actions .close-btn:hover { background: #4e5058; color: #fff; }
+        .call-window .call-actions .screen-btn {
+            background: #5865f2;
+            color: #fff;
+        }
+        .call-window .call-actions .screen-btn:hover { background: #4752c4; }
+        .call-window .call-actions .screen-btn.active {
+            background: #e67e22;
+        }
+        .call-window .call-actions .screen-btn.active:hover { background: #d35400; }
 
         .toast {
             position: fixed;
@@ -476,6 +487,7 @@
             .call-window { max-width: 320px; padding: 28px 20px; }
             .incoming-call .call-box { padding: 24px 20px; }
             .toast { font-size: 14px; padding: 12px 20px; }
+            .call-window .call-actions button { font-size: 12px; padding: 8px 12px; min-width: 60px; }
         }
     </style>
 </head>
@@ -574,6 +586,7 @@
     <div class="call-actions">
         <button class="hangup" id="hangupBtn">📞 Положить</button>
         <button class="close-btn" id="closeCallBtn">✖ Закрыть</button>
+        <button class="screen-btn" id="screenBtn">🖥️ Экран</button>
     </div>
 </div>
 
@@ -710,6 +723,7 @@
     var callTimer = document.getElementById('callTimer');
     var hangupBtn = document.getElementById('hangupBtn');
     var closeCallBtn = document.getElementById('closeCallBtn');
+    var screenBtn = document.getElementById('screenBtn');
 
     var headerAvatar = document.getElementById('headerAvatar');
     var sidebarUserName = document.getElementById('sidebarUserName');
@@ -723,6 +737,7 @@
 
     var localStream = null;
     var remoteStream = null;
+    var screenStream = null;
     var peerConnection = null;
     var isInCall = false;
     var callReceiverUid = null;
@@ -732,6 +747,7 @@
     var isRinging = false;
     var isCallActive = false;
     var isIncomingCallActive = false;
+    var isScreenSharing = false;
 
     // ====== ЗВУКИ ======
     var ringtoneAudio = null;
@@ -971,6 +987,76 @@
             });
     }
 
+    // ====== ТРАНСЛЯЦИЯ ЭКРАНА ======
+    function toggleScreenShare() {
+        if (!isCallActive) {
+            showToast('❌ Сначала начните звонок', 'error');
+            return;
+        }
+
+        if (isScreenSharing) {
+            // Останавливаем трансляцию
+            if (screenStream) {
+                screenStream.getTracks().forEach(function(track) {
+                    track.stop();
+                });
+                screenStream = null;
+            }
+            isScreenSharing = false;
+            screenBtn.textContent = '🖥️ Экран';
+            screenBtn.classList.remove('active');
+            showToast('🛑 Трансляция экрана остановлена', 'info');
+            // Переключаемся обратно на микрофон
+            if (localStream && peerConnection) {
+                var senders = peerConnection.getSenders();
+                senders.forEach(function(sender) {
+                    if (sender.track && sender.track.kind === 'video') {
+                        peerConnection.removeTrack(sender);
+                    }
+                });
+            }
+            return;
+        }
+
+        // Запускаем трансляцию экрана
+        navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
+            .then(function(stream) {
+                screenStream = stream;
+                isScreenSharing = true;
+                screenBtn.textContent = '🛑 Остановить';
+                screenBtn.classList.add('active');
+                showToast('🖥️ Трансляция экрана начата!', 'success');
+                
+                // Добавляем видео-трек к существующему соединению
+                if (peerConnection) {
+                    var videoTrack = stream.getVideoTracks()[0];
+                    if (videoTrack) {
+                        var senders = peerConnection.getSenders();
+                        // Ищем существующий видео-трек и заменяем его
+                        var existingVideoSender = null;
+                        senders.forEach(function(sender) {
+                            if (sender.track && sender.track.kind === 'video') {
+                                existingVideoSender = sender;
+                            }
+                        });
+                        if (existingVideoSender) {
+                            existingVideoSender.replaceTrack(videoTrack);
+                        } else {
+                            peerConnection.addTrack(videoTrack, stream);
+                        }
+                    }
+                }
+            })
+            .catch(function(err) {
+                showToast('❌ Ошибка доступа к экрану: ' + err.message, 'error');
+                isScreenSharing = false;
+                screenBtn.textContent = '🖥️ Экран';
+                screenBtn.classList.remove('active');
+            });
+    }
+
+    screenBtn.addEventListener('click', toggleScreenShare);
+
     function startPeerConnection(isCaller) {
         console.log('🔊 ЗВОНОК: Начинаем WebRTC, isCaller=', isCaller);
         if (peerConnection) {
@@ -1090,6 +1176,18 @@
         stopIncomingRingtone();
         callAvatar.classList.remove('blink');
         headerAvatar.classList.remove('blink');
+        
+        // Останавливаем трансляцию экрана
+        if (screenStream) {
+            screenStream.getTracks().forEach(function(track) {
+                track.stop();
+            });
+            screenStream = null;
+        }
+        isScreenSharing = false;
+        screenBtn.textContent = '🖥️ Экран';
+        screenBtn.classList.remove('active');
+        
         if (isCallActive || isRinging) {
             playEndCallSound();
         }
@@ -1138,6 +1236,12 @@
             callStatus.textContent = '🔊 Разговор...';
             callTimer.className = 'call-timer';
         }
+        // Показываем кнопку экрана только во время разговора
+        if (mode === 'call') {
+            screenBtn.style.display = 'block';
+        } else {
+            screenBtn.style.display = 'block';
+        }
     }
 
     function closeCallWindow() {
@@ -1148,6 +1252,13 @@
             callTimerInterval = null;
         }
         callTimer.textContent = '00:00';
+        screenBtn.textContent = '🖥️ Экран';
+        screenBtn.classList.remove('active');
+        isScreenSharing = false;
+        if (screenStream) {
+            screenStream.getTracks().forEach(function(t) { t.stop(); });
+            screenStream = null;
+        }
     }
 
     function startTimer(mode) {
@@ -1875,7 +1986,7 @@
         });
     }
 
-    console.log('🔥 Дискард — только эмодзи, без картинок!');
+    console.log('🔥 Дискард — с трансляцией экрана!');
 </script>
 </body>
 </html>
