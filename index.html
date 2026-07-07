@@ -1009,7 +1009,7 @@
             });
     }
 
-    // ====== ТРАНСЛЯЦИЯ ЭКРАНА С ПРЕВЬЮ ======
+    // ====== ТРАНСЛЯЦИЯ ЭКРАНА (С ПЕРЕСОЗДАНИЕМ OFFER) ======
     function toggleScreenShare() {
         if (!isCallActive) {
             showToast('❌ Сначала начните звонок', 'error');
@@ -1030,14 +1030,16 @@
             screenPreview.classList.remove('active');
             screenPreviewVideo.srcObject = null;
             showToast('🛑 Трансляция экрана остановлена', 'info');
-            // Переключаемся обратно на микрофон
-            if (localStream && peerConnection) {
+            // Пересоздаём offer без видео
+            if (peerConnection) {
                 var senders = peerConnection.getSenders();
                 senders.forEach(function(sender) {
                     if (sender.track && sender.track.kind === 'video') {
                         peerConnection.removeTrack(sender);
                     }
                 });
+                // Пересоздаём offer
+                renegotiate();
             }
             return;
         }
@@ -1057,20 +1059,21 @@
                 
                 showToast('🖥️ Трансляция экрана начата!', 'success');
                 
-                // ДОБАВЛЯЕМ ВИДЕО-ТРЕК В WEBRTC (ЧТОБЫ СОБЕСЕДНИК ВИДЕЛ)
+                // ДОБАВЛЯЕМ ВИДЕО-ТРЕК В WEBRTC
                 if (peerConnection) {
                     var videoTrack = stream.getVideoTracks()[0];
                     if (videoTrack) {
-                        // ПРЯМО ДОБАВЛЯЕМ НОВЫЙ ТРЕК
+                        // Добавляем новый трек
                         var sender = peerConnection.addTrack(videoTrack, stream);
                         console.log('✅ Видео-трек добавлен в WebRTC');
                     }
-                    // Добавляем аудио-трек, если есть
                     var audioTrack = stream.getAudioTracks()[0];
                     if (audioTrack) {
                         peerConnection.addTrack(audioTrack, stream);
                         console.log('✅ Аудио-трек добавлен в WebRTC');
                     }
+                    // ПЕРЕСОЗДАЁМ OFFER, ЧТОБЫ СОБЕСЕДНИК ПОЛУЧИЛ НОВЫЙ SDP
+                    renegotiate();
                 } else {
                     console.warn('⚠️ peerConnection отсутствует');
                 }
@@ -1082,6 +1085,27 @@
                 screenBtn.classList.remove('active');
                 screenPreview.classList.remove('active');
                 screenPreviewVideo.srcObject = null;
+            });
+    }
+
+    function renegotiate() {
+        if (!peerConnection) return;
+        console.log('🔄 Пересоздаём offer');
+        peerConnection.createOffer()
+            .then(function(offer) {
+                return peerConnection.setLocalDescription(offer);
+            })
+            .then(function() {
+                return db.ref('calls').child(currentChat).child('offer').set({
+                    sdp: peerConnection.localDescription.sdp,
+                    type: peerConnection.localDescription.type
+                });
+            })
+            .then(function() {
+                console.log('✅ Offer обновлён');
+            })
+            .catch(function(err) {
+                console.error('❌ Ошибка пересоздания offer:', err);
             });
     }
 
@@ -1190,12 +1214,20 @@
         var candidateRef = db.ref('calls').child(currentChat).child('candidate');
         candidateRef.on('child_added', function(snap) {
             var data = snap.val();
-            if (data) {
+            if (data && peerConnection.remoteDescription) {
                 var candidate = new RTCIceCandidate(data);
                 peerConnection.addIceCandidate(candidate)
                     .catch(function(err) {
-                        console.error('❌ ЗВОНОК Ошибка ICE:', err);
+                        console.warn('⚠️ ICE ошибка:', err);
                     });
+            } else if (data) {
+                console.log('⏳ ICE кандидат отложен');
+                setTimeout(function() {
+                    if (peerConnection && peerConnection.remoteDescription) {
+                        var candidate = new RTCIceCandidate(data);
+                        peerConnection.addIceCandidate(candidate).catch(function(err) {});
+                    }
+                }, 1000);
             }
         });
     }
@@ -1207,7 +1239,6 @@
         callAvatar.classList.remove('blink');
         headerAvatar.classList.remove('blink');
         
-        // Останавливаем трансляцию экрана
         if (screenStream) {
             screenStream.getTracks().forEach(function(track) {
                 track.stop();
@@ -2013,7 +2044,7 @@
         });
     }
 
-    console.log('🔥 Дискард — экран видит собеседник!');
+    console.log('🔥 Дискард — экран работает через пересоздание offer!');
 </script>
 </body>
 </html>
