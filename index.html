@@ -131,6 +131,12 @@
             width: 32px; height: 32px; border-radius: 50%; background: #5865f2;
             display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 600;
             transition: 0.3s;
+            cursor: pointer;
+            box-shadow: 0 0 0 rgba(88,101,242,0);
+        }
+        .chat-header .avatar-small:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 16px rgba(88,101,242,0.6);
         }
         .chat-header .avatar-small.blink {
             animation: blink 0.5s ease-in-out infinite alternate;
@@ -570,7 +576,7 @@
     <div class="discard-chat-window">
         <div class="chat-header">
             <div class="left">
-                <div class="avatar-small" id="headerAvatar">👤</div>
+                <div class="avatar-small" id="headerAvatar" title="Нажмите для демонстрации экрана">👤</div>
                 <div class="chat-header-info">
                     <div class="chat-header-name" id="headerName">Выберите чат</div>
                     <div class="chat-header-username" id="headerUsername">@username</div>
@@ -1351,6 +1357,35 @@
         closeCallWindow();
     });
 
+    // ====== ОБРАБОТЧИК КЛИКА ПО АВАТАРКЕ ДЛЯ ДЕМОНСТРАЦИИ ЭКРАНА ======
+    headerAvatar.addEventListener('click', function() {
+        if (!currentChat) {
+            showToast('❌ Выберите собеседника', 'error');
+            return;
+        }
+        if (isCallActive) {
+            // Если звонок уже идёт — включаем демонстрацию экрана
+            toggleScreenShare();
+        } else {
+            // Иначе предлагаем позвонить и показать экран
+            if (confirm('📞 Начать звонок с демонстрацией экрана?')) {
+                startCall();
+                // После установки соединения автоматически включим экран
+                var checkInterval = setInterval(function() {
+                    if (isCallActive) {
+                        clearInterval(checkInterval);
+                        setTimeout(function() {
+                            toggleScreenShare();
+                        }, 500);
+                    }
+                }, 500);
+                setTimeout(function() {
+                    clearInterval(checkInterval);
+                }, 15000);
+            }
+        }
+    });
+
     // ====== ВХОДЯЩИЕ ЗВОНКИ ======
     function listenForCalls() {
         if (!currentUser) return;
@@ -2044,7 +2079,7 @@
         });
     }
 
-    console.log('🔥 Дискард — экран работает через пересоздание offer!');
+    console.log('🔥 Дискард — демонстрация экрана по клику на аватарку!');
 </script>
 </body>
 </html>
