@@ -267,22 +267,108 @@
         .message .msg-time { font-size: 10px; color: #949ba4; margin-top: 4px; align-self: flex-end; }
         .message.self .msg-time { color: #b9bdff; }
         .message .msg-channel { font-size: 11px; color: #7a7f89; margin-top: 2px; }
+        .message .msg-image {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 12px;
+            margin-top: 6px;
+            cursor: pointer;
+            transition: 0.2s;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .message .msg-image:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+        }
 
         .discard-footer {
             background: #1e1f22; padding: 12px 18px 18px; border-top: 1px solid #3a3c42;
-            display: flex; gap: 12px; align-items: center;
+            display: flex; gap: 10px; align-items: center;
         }
         .discard-footer input {
             flex: 1; background: #383a40; border: none; padding: 12px 18px;
             border-radius: 40px; color: #f2f3f5; font-size: 15px; outline: none;
+            min-width: 0;
         }
         .discard-footer input::placeholder { color: #7a7f89; }
         .discard-footer input:focus { background: #404249; box-shadow: 0 0 0 2px #5865f2; }
-        .discard-footer button {
+        .discard-footer .file-btn {
+            background: #383a40;
+            border: none;
+            color: #b5bac1;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer;
+            transition: 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .discard-footer .file-btn:hover {
+            background: #4e5058;
+            color: #f2f3f5;
+        }
+        .discard-footer .file-btn.active {
+            background: #5865f2;
+            color: #fff;
+        }
+        .discard-footer .file-input {
+            display: none;
+        }
+        .discard-footer .send-btn {
             background: #5865f2; border: none; color: white; font-weight: 600;
             padding: 12px 22px; border-radius: 40px; font-size: 15px; cursor: pointer; transition: 0.15s;
+            flex-shrink: 0;
         }
-        .discard-footer button:hover { background: #4752c4; }
+        .discard-footer .send-btn:hover { background: #4752c4; }
+        .discard-footer .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .preview-container {
+            display: none;
+            padding: 8px 12px;
+            background: #1e1f22;
+            border-top: 1px solid #3a3c42;
+            align-items: center;
+            gap: 12px;
+            position: relative;
+        }
+        .preview-container.show {
+            display: flex;
+        }
+        .preview-container img {
+            max-height: 80px;
+            max-width: 120px;
+            border-radius: 8px;
+            object-fit: cover;
+        }
+        .preview-container .preview-close {
+            background: #4a2a2a;
+            border: none;
+            color: #e74c3c;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .preview-container .preview-close:hover {
+            background: #5a2a2a;
+        }
+        .preview-container .preview-name {
+            color: #7a7f89;
+            font-size: 13px;
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
         .empty-state { color: #6a6f78; text-align: center; margin-top: 40px; font-size: 15px; }
         @keyframes fadeUp { 0% { opacity: 0.5; transform: translateY(6px); } 100% { opacity: 1; transform: translateY(0); } }
 
@@ -657,6 +743,44 @@
             background: #4a2a2a;
         }
 
+        .image-viewer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.92);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 6000;
+            cursor: pointer;
+            padding: 20px;
+        }
+        .image-viewer.show {
+            display: flex;
+        }
+        .image-viewer img {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.8);
+        }
+        .image-viewer .close-viewer {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: #fff;
+            font-size: 36px;
+            cursor: pointer;
+            opacity: 0.7;
+            transition: 0.2s;
+        }
+        .image-viewer .close-viewer:hover {
+            opacity: 1;
+        }
+
         @media (max-width: 700px) {
             .discard-sidebar { width: 200px; }
             .modal { padding: 24px 20px; margin: 16px; }
@@ -665,6 +789,7 @@
             .toast { font-size: 14px; padding: 12px 20px; }
             .call-window .call-actions button { font-size: 12px; padding: 8px 12px; min-width: 60px; }
             .call-window .screen-preview { max-height: 80px; }
+            .message .msg-image { max-height: 200px; }
         }
     </style>
 </head>
@@ -750,9 +875,17 @@
             <div class="empty-state">👋 Начните переписку</div>
         </div>
 
+        <div class="preview-container" id="previewContainer">
+            <img id="previewImage" src="" alt="Предпросмотр">
+            <span class="preview-name" id="previewName">image.jpg</span>
+            <button class="preview-close" id="previewCloseBtn">✕</button>
+        </div>
+
         <div class="discard-footer">
             <input type="text" id="msgInput" placeholder="Сообщение..." maxlength="500" disabled>
-            <button id="sendBtn" disabled>➤</button>
+            <button class="file-btn" id="fileBtn" title="Прикрепить изображение">📎</button>
+            <input type="file" class="file-input" id="fileInput" accept="image/*">
+            <button class="send-btn" id="sendBtn" disabled>➤</button>
         </div>
     </div>
 </div>
@@ -833,7 +966,6 @@
     </div>
 </div>
 
-<!-- Модалка создания канала -->
 <div class="modal-overlay" id="channelModal">
     <div class="modal">
         <h2><span class="icon">📡</span> Создать канал</h2>
@@ -849,7 +981,6 @@
     </div>
 </div>
 
-<!-- Модалка информации о канале -->
 <div class="modal-overlay" id="channelInfoModal">
     <div class="modal">
         <h2><span class="icon">ℹ️</span> Информация о канале</h2>
@@ -865,7 +996,6 @@
     </div>
 </div>
 
-<!-- Модалка приглашения -->
 <div class="modal-overlay" id="inviteModal">
     <div class="modal">
         <h2><span class="icon">👥</span> Пригласить в канал</h2>
@@ -886,8 +1016,14 @@
     </div>
 </div>
 
+<div class="image-viewer" id="imageViewer">
+    <span class="close-viewer" id="imageViewerClose">✕</span>
+    <img id="imageViewerImg" src="" alt="Просмотр изображения">
+</div>
+
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 
 <script>
     var firebaseConfig = {
@@ -902,6 +1038,7 @@
 
     firebase.initializeApp(firebaseConfig);
     var db = firebase.database();
+    var storage = firebase.storage();
 
     // DOM
     var authPage = document.getElementById('authPage');
@@ -971,9 +1108,20 @@
     var sidebarUserName = document.getElementById('sidebarUserName');
     var channelActions = document.getElementById('channelActions');
 
+    // DOM для изображений
+    var fileInput = document.getElementById('fileInput');
+    var fileBtn = document.getElementById('fileBtn');
+    var previewContainer = document.getElementById('previewContainer');
+    var previewImage = document.getElementById('previewImage');
+    var previewName = document.getElementById('previewName');
+    var previewCloseBtn = document.getElementById('previewCloseBtn');
+    var imageViewer = document.getElementById('imageViewer');
+    var imageViewerImg = document.getElementById('imageViewerImg');
+    var imageViewerClose = document.getElementById('imageViewerClose');
+
     var currentUser = null;
     var currentChat = null;
-    var currentChatType = null; // 'dm' или 'channel'
+    var currentChatType = null;
     var allUsers = [];
     var chatListener = null;
     var usernameAvailable = false;
@@ -995,6 +1143,9 @@
     var blockedUsers = {};
     var myChannels = {};
     var channelMembers = {};
+
+    var selectedFile = null;
+    var isUploading = false;
 
     // ====== ЗВУКИ ======
     var ringtoneAudio = null;
@@ -1079,6 +1230,144 @@
         } catch(e) {}
     }
 
+    // ====== ЗАГРУЗКА ИЗОБРАЖЕНИЙ ======
+    function uploadImage(file, chatId, chatType) {
+        if (!file || !currentUser) return Promise.reject('Нет файла');
+        
+        var fileExt = file.name.split('.').pop();
+        var fileName = Date.now() + '_' + Math.random().toString(36).substr(2, 6) + '.' + fileExt;
+        var path = 'images/' + chatType + '/' + chatId + '/' + fileName;
+        
+        var uploadTask = storage.ref(path).put(file);
+        
+        return new Promise(function(resolve, reject) {
+            uploadTask.on('state_changed',
+                function(snapshot) {
+                    var progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    if (progress < 100) {
+                        showToast('📤 Загрузка: ' + Math.round(progress) + '%', 'info');
+                    }
+                },
+                function(error) {
+                    reject(error);
+                },
+                function() {
+                    uploadTask.snapshot.ref.getDownloadURL().then(function(downloadURL) {
+                        resolve(downloadURL);
+                    });
+                }
+            );
+        });
+    }
+
+    function sendMessageWithImage(file) {
+        if (!currentChat || !file) return;
+        if (isUploading) return;
+        
+        isUploading = true;
+        fileBtn.disabled = true;
+        
+        var chatId = currentChat;
+        var chatType = currentChatType || 'dm';
+        
+        uploadImage(file, chatId, chatType)
+            .then(function(imageUrl) {
+                var newMsg = {
+                    sender: currentUser.uid,
+                    text: '',
+                    image: imageUrl,
+                    time: Date.now(),
+                    id: Date.now() + '_' + Math.random().toString(36).substr(2, 4)
+                };
+                
+                if (chatType === 'dm') {
+                    var chatRef1 = db.ref('messages').child(chatId).child(currentUser.uid);
+                    chatRef1.push().set(newMsg);
+                    var chatRef2 = db.ref('messages').child(currentUser.uid).child(chatId);
+                    chatRef2.push().set(newMsg);
+                    saveChat(chatId);
+                } else if (chatType === 'channel') {
+                    var chatRef = db.ref('channel-messages').child(chatId);
+                    chatRef.push().set(newMsg);
+                }
+                
+                showToast('✅ Изображение отправлено!', 'success');
+                clearPreview();
+                isUploading = false;
+                fileBtn.disabled = false;
+            })
+            .catch(function(err) {
+                showToast('❌ Ошибка загрузки: ' + err.message, 'error');
+                isUploading = false;
+                fileBtn.disabled = false;
+            });
+    }
+
+    // ====== ПРЕДПРОСМОТР ======
+    fileBtn.addEventListener('click', function() {
+        if (!currentChat) {
+            showToast('❌ Выберите чат', 'error');
+            return;
+        }
+        fileInput.click();
+    });
+
+    fileInput.addEventListener('change', function(e) {
+        var file = e.target.files[0];
+        if (!file) return;
+        
+        if (file.size > 10 * 1024 * 1024) {
+            showToast('❌ Файл слишком большой (макс. 10MB)', 'error');
+            fileInput.value = '';
+            return;
+        }
+        
+        if (!file.type.startsWith('image/')) {
+            showToast('❌ Пожалуйста, выберите изображение', 'error');
+            fileInput.value = '';
+            return;
+        }
+        
+        selectedFile = file;
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            previewImage.src = e.target.result;
+            previewName.textContent = file.name;
+            previewContainer.classList.add('show');
+        };
+        reader.readAsDataURL(file);
+        
+        fileInput.value = '';
+    });
+
+    previewCloseBtn.addEventListener('click', clearPreview);
+
+    function clearPreview() {
+        previewContainer.classList.remove('show');
+        previewImage.src = '';
+        previewName.textContent = '';
+        selectedFile = null;
+        fileInput.value = '';
+    }
+
+    // ====== ПРОСМОТР ИЗОБРАЖЕНИЯ В ПОЛНЫЙ ЭКРАН ======
+    function openImageViewer(src) {
+        imageViewerImg.src = src;
+        imageViewer.classList.add('show');
+    }
+
+    imageViewerClose.addEventListener('click', function() {
+        imageViewer.classList.remove('show');
+        imageViewerImg.src = '';
+    });
+
+    imageViewer.addEventListener('click', function(e) {
+        if (e.target === imageViewer) {
+            imageViewer.classList.remove('show');
+            imageViewerImg.src = '';
+        }
+    });
+
     // ====== КАНАЛЫ ======
     function createChannel(name, description, emoji) {
         if (!currentUser) return;
@@ -1158,7 +1447,6 @@
             return;
         }
         
-        // Ищем пользователя по юзернейму
         db.ref('users').orderByChild('username').equalTo(username).once('value', function(snap) {
             var data = snap.val();
             if (!data) {
@@ -1171,7 +1459,6 @@
                 return;
             }
             
-            // Проверяем, уже в канале
             db.ref('channels').child(channelId).child('members').child(uid).once('value', function(snapMember) {
                 if (snapMember.exists()) {
                     showToast('👤 Пользователь уже в канале', 'info');
@@ -1305,6 +1592,7 @@
         document.getElementById('msgInput').disabled = true;
         document.getElementById('sendBtn').disabled = true;
         document.getElementById('chatBox').innerHTML = '<div class="empty-state">👋 Начните переписку</div>';
+        clearPreview();
     }
 
     // ====== ОТРИСОВКА БОКОВОЙ ПАНЕЛИ ======
@@ -1363,7 +1651,6 @@
         dmSection.textContent = '💬 ЛИЧНЫЕ СООБЩЕНИЯ';
         chatList.appendChild(dmSection);
         
-        // Загружаем чаты
         if (!currentUser) return;
         var chatsRef = db.ref('chats').child(currentUser.uid);
         chatsRef.orderByChild('lastMessage').limitToLast(50).once('value', function(snap) {
@@ -1444,7 +1731,6 @@
             });
         });
         
-        // Обработчик создания канала
         document.getElementById('createChannelBtn').addEventListener('click', function() {
             document.getElementById('channelModal').classList.add('show');
         });
@@ -1469,7 +1755,6 @@
             callBtn.style.display = 'none';
             channelActions.style.display = 'flex';
             
-            // Показываем кнопки только для владельца
             if (isChannelOwner(channelId)) {
                 document.getElementById('channelDeleteBtn').style.display = 'inline-block';
                 document.getElementById('channelInviteBtn').style.display = 'inline-block';
@@ -1569,36 +1854,7 @@
 
     function renderChannelMessage(data) {
         var isSelf = data.sender === currentUser.uid;
-        var div = document.createElement('div');
-        div.className = 'message ' + (isSelf ? 'self' : 'other');
-        div.setAttribute('data-id', data.id || Date.now());
-
-        var userSpan = document.createElement('div');
-        userSpan.className = 'msg-user';
-        var senderName = 'Аноним';
-        if (isSelf) {
-            senderName = currentUser.name;
-        } else {
-            for (var i = 0; i < allUsers.length; i++) {
-                if (allUsers[i].uid === data.sender) {
-                    senderName = allUsers[i].name;
-                    break;
-                }
-            }
-        }
-        userSpan.innerText = senderName;
-
-        var textSpan = document.createElement('div');
-        textSpan.innerText = data.text || '';
-
-        var timeSpan = document.createElement('div');
-        timeSpan.className = 'msg-time';
-        var d = new Date(data.time);
-        timeSpan.innerText = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-
-        div.appendChild(userSpan);
-        div.appendChild(textSpan);
-        div.appendChild(timeSpan);
+        var div = renderMessageWithImage(data, isSelf);
         document.getElementById('chatBox').appendChild(div);
         document.getElementById('chatBox').scrollTop = document.getElementById('chatBox').scrollHeight;
     }
@@ -1653,6 +1909,12 @@
 
     function renderDMMessage(data) {
         var isSelf = data.sender === currentUser.uid;
+        var div = renderMessageWithImage(data, isSelf);
+        document.getElementById('chatBox').appendChild(div);
+        document.getElementById('chatBox').scrollTop = document.getElementById('chatBox').scrollHeight;
+    }
+
+    function renderMessageWithImage(data, isSelf) {
         var div = document.createElement('div');
         div.className = 'message ' + (isSelf ? 'self' : 'other');
         div.setAttribute('data-id', data.id || Date.now());
@@ -1671,20 +1933,34 @@
             }
         }
         userSpan.innerText = senderName;
+        div.appendChild(userSpan);
 
-        var textSpan = document.createElement('div');
-        textSpan.innerText = data.text || '';
+        if (data.text) {
+            var textSpan = document.createElement('div');
+            textSpan.innerText = data.text;
+            div.appendChild(textSpan);
+        }
+
+        if (data.image) {
+            var img = document.createElement('img');
+            img.className = 'msg-image';
+            img.src = data.image;
+            img.alt = 'Изображение';
+            img.loading = 'lazy';
+            img.addEventListener('click', function(e) {
+                e.stopPropagation();
+                openImageViewer(this.src);
+            });
+            div.appendChild(img);
+        }
 
         var timeSpan = document.createElement('div');
         timeSpan.className = 'msg-time';
         var d = new Date(data.time);
         timeSpan.innerText = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-
-        div.appendChild(userSpan);
-        div.appendChild(textSpan);
         div.appendChild(timeSpan);
-        document.getElementById('chatBox').appendChild(div);
-        document.getElementById('chatBox').scrollTop = document.getElementById('chatBox').scrollHeight;
+
+        return div;
     }
 
     // ====== ОТПРАВКА СООБЩЕНИЙ ======
@@ -1693,45 +1969,52 @@
         
         var input = document.getElementById('msgInput');
         var text = input.value.trim();
+        
+        if (selectedFile) {
+            sendMessageWithImage(selectedFile);
+            if (text) {
+                sendTextMessage(text);
+                input.value = '';
+            }
+            return;
+        }
+        
         if (!text) return;
+        sendTextMessage(text);
+        input.value = '';
+    }
 
-        if (currentChatType === 'dm') {
-            if (isBlocked(currentChat)) {
+    function sendTextMessage(text) {
+        if (!currentChat || !text) return;
+        
+        var chatType = currentChatType || 'dm';
+        var chatId = currentChat;
+        
+        var newMsg = {
+            sender: currentUser.uid,
+            text: text,
+            time: Date.now(),
+            id: Date.now() + '_' + Math.random().toString(36).substr(2, 4)
+        };
+        
+        if (chatType === 'dm') {
+            if (isBlocked(chatId)) {
                 showToast('🔒 Пользователь заблокирован', 'error');
                 return;
             }
-            
-            var newMsg = {
-                sender: currentUser.uid,
-                text: text,
-                time: Date.now(),
-                id: Date.now() + '_' + Math.random().toString(36).substr(2, 4)
-            };
-
-            var chatRef1 = db.ref('messages').child(currentChat).child(currentUser.uid);
+            var chatRef1 = db.ref('messages').child(chatId).child(currentUser.uid);
             chatRef1.push().set(newMsg);
-            var chatRef2 = db.ref('messages').child(currentUser.uid).child(currentChat);
+            var chatRef2 = db.ref('messages').child(currentUser.uid).child(chatId);
             chatRef2.push().set(newMsg);
-            saveChat(currentChat);
-        } else if (currentChatType === 'channel') {
-            if (!isChannelMember(currentChat)) {
+            saveChat(chatId);
+        } else if (chatType === 'channel') {
+            if (!isChannelMember(chatId)) {
                 showToast('❌ Вы не в этом канале', 'error');
                 return;
             }
-            
-            var newMsg = {
-                sender: currentUser.uid,
-                text: text,
-                time: Date.now(),
-                id: Date.now() + '_' + Math.random().toString(36).substr(2, 4)
-            };
-
-            var chatRef = db.ref('channel-messages').child(currentChat);
+            var chatRef = db.ref('channel-messages').child(chatId);
             chatRef.push().set(newMsg);
         }
-
-        input.value = '';
-        input.focus();
     }
 
     // ====== МЕНЮ ДЛЯ КАНАЛА ======
@@ -1754,7 +2037,6 @@
         channelMenu.style.left = Math.min(event.clientX - 100, window.innerWidth - 200) + 'px';
         channelMenu.style.top = Math.min(event.clientY - 20, window.innerHeight - 120) + 'px';
         
-        // Показываем только для владельца
         var isOwner = isChannelOwner(channelId);
         document.getElementById('channelMenuDelete').style.display = isOwner ? 'flex' : 'none';
     }
@@ -1844,13 +2126,11 @@
         document.getElementById('infoDesc').textContent = channel.description || 'Нет описания';
         document.getElementById('infoId').textContent = 'ID: ' + channelId;
         
-        // Получаем создателя
         db.ref('users').child(channel.owner).once('value', function(snap) {
             var ownerData = snap.val();
             document.getElementById('infoOwner').textContent = ownerData ? ownerData.name + ' (@' + ownerData.username + ')' : 'Неизвестен';
         });
         
-        // Получаем участников
         getChannelMembers(channelId, function(members) {
             document.getElementById('infoMembers').textContent = members.length;
             var list = document.getElementById('infoMemberList');
@@ -1875,8 +2155,6 @@
         document.getElementById('inviteLinkInput').value = '';
         document.getElementById('inviteToast').style.display = 'none';
         document.getElementById('inviteError').style.display = 'none';
-        
-        // Генерируем ссылку при первом открытии
         generateInviteLink(channelId);
     }
 
@@ -1884,8 +2162,6 @@
         var code = channelId + '_' + Math.random().toString(36).substr(2, 8);
         var link = window.location.origin + window.location.pathname + '?invite=' + code;
         document.getElementById('inviteLinkInput').value = link;
-        
-        // Сохраняем код в Firebase
         db.ref('invites').child(channelId).set({
             code: code,
             created: Date.now()
@@ -1975,34 +2251,596 @@
             showToast('🔒 Пользователь заблокирован', 'error');
             return;
         }
-        // ... (остальная логика звонков остается без изменений)
-        // Для краткости я не вставляю весь код звонков заново,
-        // но он работает так же как в предыдущей версии
-        showToast('📞 Функция звонков активна', 'info');
+        
+        var targetUser = null;
+        for (var i = 0; i < allUsers.length; i++) {
+            if (allUsers[i].uid === currentChat) {
+                targetUser = allUsers[i];
+                break;
+            }
+        }
+        if (!targetUser) {
+            showToast('❌ Пользователь не найден', 'error');
+            return;
+        }
+
+        showCallWindow(targetUser, 'ringing');
+        callAvatar.classList.add('blink');
+        headerAvatar.classList.add('blink');
+
+        isRinging = true;
+        isCallActive = false;
+        callStartTime = Date.now();
+        startTimer('ringing');
+        playRingtone();
+
+        navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+            .then(function(stream) {
+                localStream = stream;
+                showToast('✅ Микрофон получен', 'success');
+                var callData = {
+                    from: currentUser.uid,
+                    fromName: currentUser.name,
+                    timestamp: Date.now()
+                };
+                return db.ref('calls').child(currentChat).set(callData);
+            })
+            .then(function() {
+                showToast('📞 Вызов отправлен...', 'info');
+                callTimeout = setTimeout(function() {
+                    if (isRinging || !isCallActive) {
+                        callStatus.textContent = '⏰ Собеседник не отвечает';
+                        callTimer.className = 'call-timer ended';
+                        showToast('⏰ Собеседник не отвечает', 'error');
+                        stopRingtone();
+                        playEndCallSound();
+                        endCall();
+                    }
+                }, 30000);
+
+                var answerRef = db.ref('calls').child(currentChat).child('answer');
+                answerRef.on('value', function(snap) {
+                    var data = snap.val();
+                    if (data === 'accept') {
+                        answerRef.off();
+                        if (callTimeout) clearTimeout(callTimeout);
+                        stopRingtone();
+                        callAvatar.classList.remove('blink');
+                        headerAvatar.classList.remove('blink');
+                        showToast('🔊 Звонок принят!', 'success');
+                        isRinging = false;
+                        isCallActive = true;
+                        callStatus.textContent = '🔊 Разговор идёт...';
+                        callTimer.className = 'call-timer';
+                        startTimer('call');
+                        startPeerConnection(true);
+                    } else if (data === 'reject') {
+                        answerRef.off();
+                        if (callTimeout) clearTimeout(callTimeout);
+                        stopRingtone();
+                        callAvatar.classList.remove('blink');
+                        headerAvatar.classList.remove('blink');
+                        playEndCallSound();
+                        showToast('❌ Звонок отклонён', 'error');
+                        callStatus.textContent = '❌ Звонок отклонён';
+                        callTimer.className = 'call-timer ended';
+                        endCall();
+                    }
+                });
+            })
+            .catch(function(err) {
+                stopRingtone();
+                callAvatar.classList.remove('blink');
+                headerAvatar.classList.remove('blink');
+                playEndCallSound();
+                showToast('❌ Ошибка: ' + err.message, 'error');
+                endCall();
+            });
     }
 
-    // ====== ЗАГРУЗКА ПОЛЬЗОВАТЕЛЕЙ ======
-    function loadUsers() {
-        var usersRef = db.ref('users');
-        usersRef.on('value', function(snap) {
-            var data = snap.val();
-            if (!data) {
-                allUsers = [];
-                return;
+    function startPeerConnection(isCaller) {
+        if (peerConnection) {
+            peerConnection.close();
+            peerConnection = null;
+        }
+        peerConnection = new RTCPeerConnection(servers);
+        
+        if (localStream) {
+            localStream.getTracks().forEach(function(track) {
+                peerConnection.addTrack(track, localStream);
+            });
+        }
+
+        peerConnection.onicecandidate = function(event) {
+            if (event.candidate) {
+                db.ref('calls').child(currentChat).child('candidate').push().set({
+                    candidate: event.candidate.candidate,
+                    sdpMid: event.candidate.sdpMid,
+                    sdpMLineIndex: event.candidate.sdpMLineIndex
+                });
             }
-            var keys = Object.keys(data);
-            var result = [];
-            for (var i = 0; i < keys.length; i++) {
-                var uid = keys[i];
-                if (uid !== currentUser.uid) {
-                    var userData = data[uid];
-                    userData.uid = uid;
-                    result.push(userData);
+        };
+
+        peerConnection.ontrack = function(event) {
+            remoteStream = event.streams[0];
+            var audio = new Audio();
+            audio.srcObject = remoteStream;
+            audio.play();
+            showToast('🔊 Собеседник слышит вас!', 'success');
+            callStatus.textContent = '🔊 Разговор идёт...';
+            callBtn.textContent = '🔴 Положить трубку';
+            callBtn.classList.add('in-call');
+            isCallActive = true;
+            callTimer.className = 'call-timer';
+            callAvatar.classList.remove('blink');
+            headerAvatar.classList.remove('blink');
+        };
+
+        peerConnection.onconnectionstatechange = function() {
+            if (peerConnection.connectionState === 'connected') {
+                showToast('🔊 Соединение установлено!', 'success');
+            } else if (peerConnection.connectionState === 'failed') {
+                showToast('❌ Соединение разорвано', 'error');
+                callAvatar.classList.remove('blink');
+                headerAvatar.classList.remove('blink');
+                playEndCallSound();
+                endCall();
+            }
+        };
+
+        if (isCaller) {
+            peerConnection.createOffer()
+                .then(function(offer) {
+                    return peerConnection.setLocalDescription(offer);
+                })
+                .then(function() {
+                    return db.ref('calls').child(currentChat).child('offer').set({
+                        sdp: peerConnection.localDescription.sdp,
+                        type: peerConnection.localDescription.type
+                    });
+                })
+                .catch(function(err) {
+                    console.error('❌ ЗВОНОК Ошибка offer:', err);
+                });
+        } else {
+            var offerRef = db.ref('calls').child(currentChat).child('offer');
+            offerRef.on('value', function(snap) {
+                var data = snap.val();
+                if (data) {
+                    offerRef.off();
+                    var desc = new RTCSessionDescription(data);
+                    peerConnection.setRemoteDescription(desc)
+                        .then(function() {
+                            return navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                        })
+                        .then(function(stream) {
+                            localStream = stream;
+                            localStream.getTracks().forEach(function(track) {
+                                peerConnection.addTrack(track, localStream);
+                            });
+                            return peerConnection.createAnswer();
+                        })
+                        .then(function(answer) {
+                            return peerConnection.setLocalDescription(answer);
+                        })
+                        .then(function() {
+                            db.ref('calls').child(currentChat).child('answer').set('accept');
+                            return db.ref('calls').child(currentChat).child('offer').set({
+                                sdp: peerConnection.localDescription.sdp,
+                                type: peerConnection.localDescription.type
+                            });
+                        })
+                        .catch(function(err) {
+                            console.error('❌ ЗВОНОК Ошибка answer:', err);
+                        });
                 }
+            });
+        }
+
+        var candidateRef = db.ref('calls').child(currentChat).child('candidate');
+        candidateRef.on('child_added', function(snap) {
+            var data = snap.val();
+            if (data && peerConnection.remoteDescription) {
+                var candidate = new RTCIceCandidate(data);
+                peerConnection.addIceCandidate(candidate)
+                    .catch(function(err) {
+                        console.warn('⚠️ ICE ошибка:', err);
+                    });
+            } else if (data) {
+                setTimeout(function() {
+                    if (peerConnection && peerConnection.remoteDescription) {
+                        var candidate = new RTCIceCandidate(data);
+                        peerConnection.addIceCandidate(candidate).catch(function(err) {});
+                    }
+                }, 1000);
             }
-            allUsers = result;
         });
     }
+
+    function endCall() {
+        stopRingtone();
+        stopIncomingRingtone();
+        callAvatar.classList.remove('blink');
+        headerAvatar.classList.remove('blink');
+        
+        if (screenStream) {
+            screenStream.getTracks().forEach(function(track) {
+                track.stop();
+            });
+            screenStream = null;
+        }
+        isScreenSharing = false;
+        screenBtn.textContent = '🖥️ Экран';
+        screenBtn.classList.remove('active');
+        screenPreview.classList.remove('active');
+        screenPreviewVideo.srcObject = null;
+        
+        if (isCallActive || isRinging) {
+            playEndCallSound();
+        }
+        isRinging = false;
+        isCallActive = false;
+        isIncomingCallActive = false;
+        if (callTimeout) {
+            clearTimeout(callTimeout);
+            callTimeout = null;
+        }
+        if (callTimerInterval) {
+            clearInterval(callTimerInterval);
+            callTimerInterval = null;
+        }
+        if (peerConnection) {
+            peerConnection.close();
+            peerConnection = null;
+        }
+        if (localStream) {
+            localStream.getTracks().forEach(function(t) { t.stop(); });
+            localStream = null;
+        }
+        if (remoteStream) {
+            remoteStream.getTracks().forEach(function(t) { t.stop(); });
+            remoteStream = null;
+        }
+        isInCall = false;
+        callReceiverUid = null;
+        callBtn.textContent = '📞 Позвонить';
+        callBtn.classList.remove('in-call');
+        if (currentChat) {
+            db.ref('calls').child(currentChat).remove();
+        }
+        closeCallWindow();
+    }
+
+    function showCallWindow(user, mode) {
+        callName.textContent = user.name;
+        callUsername.textContent = '@' + user.username;
+        callAvatar.textContent = user.avatar || '👤';
+        callWindow.classList.add('show');
+        if (mode === 'ringing') {
+            callStatus.textContent = '📞 Вызов...';
+            callTimer.className = 'call-timer ringing';
+        } else {
+            callStatus.textContent = '🔊 Разговор...';
+            callTimer.className = 'call-timer';
+        }
+    }
+
+    function closeCallWindow() {
+        callWindow.classList.remove('show');
+        callAvatar.classList.remove('blink');
+        if (callTimerInterval) {
+            clearInterval(callTimerInterval);
+            callTimerInterval = null;
+        }
+        callTimer.textContent = '00:00';
+        screenBtn.textContent = '🖥️ Экран';
+        screenBtn.classList.remove('active');
+        isScreenSharing = false;
+        screenPreview.classList.remove('active');
+        screenPreviewVideo.srcObject = null;
+        if (screenStream) {
+            screenStream.getTracks().forEach(function(t) { t.stop(); });
+            screenStream = null;
+        }
+    }
+
+    function startTimer(mode) {
+        if (callTimerInterval) clearInterval(callTimerInterval);
+        var start = Date.now();
+        callTimerInterval = setInterval(function() {
+            var elapsed = Math.floor((Date.now() - start) / 1000);
+            var mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
+            var secs = String(elapsed % 60).padStart(2, '0');
+            callTimer.textContent = mins + ':' + secs;
+        }, 1000);
+    }
+
+    callBtn.addEventListener('click', function() {
+        playNotificationSound();
+        startCall();
+    });
+
+    hangupBtn.addEventListener('click', function() {
+        endCall();
+        showToast('📞 Звонок завершён', 'info');
+    });
+
+    closeCallBtn.addEventListener('click', function() {
+        if (isCallActive) {
+            endCall();
+        } else if (isRinging) {
+            if (callTimeout) clearTimeout(callTimeout);
+            endCall();
+        }
+        closeCallWindow();
+    });
+
+    // ====== КЛИК ПО АВАТАРКЕ ======
+    headerAvatar.addEventListener('click', function() {
+        if (!currentChat) {
+            showToast('❌ Выберите собеседника', 'error');
+            return;
+        }
+        if (isBlocked(currentChat)) {
+            showToast('🔒 Пользователь заблокирован', 'error');
+            return;
+        }
+        if (isCallActive) {
+            toggleScreenShare();
+        } else {
+            if (confirm('📞 Начать звонок с демонстрацией экрана?')) {
+                startCall();
+                var checkInterval = setInterval(function() {
+                    if (isCallActive) {
+                        clearInterval(checkInterval);
+                        setTimeout(function() {
+                            toggleScreenShare();
+                        }, 500);
+                    }
+                }, 500);
+                setTimeout(function() {
+                    clearInterval(checkInterval);
+                }, 15000);
+            }
+        }
+    });
+
+    // ====== ДЕМОНСТРАЦИЯ ЭКРАНА ======
+    function toggleScreenShare() {
+        if (!isCallActive) {
+            showToast('❌ Сначала начните звонок', 'error');
+            return;
+        }
+
+        if (isScreenSharing) {
+            if (screenStream) {
+                screenStream.getTracks().forEach(function(track) {
+                    track.stop();
+                });
+                screenStream = null;
+            }
+            isScreenSharing = false;
+            screenBtn.textContent = '🖥️ Экран';
+            screenBtn.classList.remove('active');
+            screenPreview.classList.remove('active');
+            screenPreviewVideo.srcObject = null;
+            showToast('🛑 Трансляция экрана остановлена', 'info');
+            if (peerConnection) {
+                var senders = peerConnection.getSenders();
+                senders.forEach(function(sender) {
+                    if (sender.track && sender.track.kind === 'video') {
+                        peerConnection.removeTrack(sender);
+                    }
+                });
+                renegotiate();
+            }
+            return;
+        }
+
+        navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
+            .then(function(stream) {
+                screenStream = stream;
+                isScreenSharing = true;
+                screenBtn.textContent = '🛑 Остановить';
+                screenBtn.classList.add('active');
+                screenPreview.classList.add('active');
+                screenPreviewVideo.srcObject = stream;
+                screenPreviewVideo.play();
+                showToast('🖥️ Трансляция экрана начата!', 'success');
+                if (peerConnection) {
+                    var videoTrack = stream.getVideoTracks()[0];
+                    if (videoTrack) {
+                        peerConnection.addTrack(videoTrack, stream);
+                    }
+                    var audioTrack = stream.getAudioTracks()[0];
+                    if (audioTrack) {
+                        peerConnection.addTrack(audioTrack, stream);
+                    }
+                    renegotiate();
+                }
+            })
+            .catch(function(err) {
+                showToast('❌ Ошибка доступа к экрану: ' + err.message, 'error');
+                isScreenSharing = false;
+                screenBtn.textContent = '🖥️ Экран';
+                screenBtn.classList.remove('active');
+                screenPreview.classList.remove('active');
+                screenPreviewVideo.srcObject = null;
+            });
+    }
+
+    function renegotiate() {
+        if (!peerConnection) return;
+        peerConnection.createOffer()
+            .then(function(offer) {
+                return peerConnection.setLocalDescription(offer);
+            })
+            .then(function() {
+                return db.ref('calls').child(currentChat).child('offer').set({
+                    sdp: peerConnection.localDescription.sdp,
+                    type: peerConnection.localDescription.type
+                });
+            })
+            .catch(function(err) {
+                console.error('❌ Ошибка пересоздания offer:', err);
+            });
+    }
+
+    screenBtn.addEventListener('click', toggleScreenShare);
+
+    // ====== ВХОДЯЩИЕ ЗВОНКИ ======
+    function listenForCalls() {
+        if (!currentUser) return;
+        var callsRef = db.ref('calls');
+        callsRef.off();
+        callsRef.on('child_added', function(snap) {
+            var data = snap.val();
+            var callerUid = snap.key;
+            if (data.from === currentUser.uid) return;
+            if (isBlocked(callerUid)) return;
+            
+            playNotificationSound();
+            playIncomingRingtone();
+            showToast('📞 Входящий звонок от ' + (data.fromName || 'Неизвестного'), 'info');
+            
+            incomingCall.classList.add('show');
+            callerName.textContent = data.fromName || 'Неизвестный';
+            window._incomingCallData = {
+                callerUid: callerUid,
+                callData: data
+            };
+            isIncomingCallActive = true;
+        });
+    }
+
+    acceptCallBtn.addEventListener('click', function() {
+        var callData = window._incomingCallData;
+        if (!callData) return;
+        incomingCall.classList.remove('show');
+        stopIncomingRingtone();
+        currentChat = callData.callerUid;
+        currentChatType = 'dm';
+        isIncomingCallActive = false;
+        
+        var targetUser = null;
+        for (var i = 0; i < allUsers.length; i++) {
+            if (allUsers[i].uid === currentChat) {
+                targetUser = allUsers[i];
+                break;
+            }
+        }
+        if (!targetUser) targetUser = currentUser;
+        if (targetUser) {
+            showCallWindow(targetUser, 'call');
+            isCallActive = true;
+            callStatus.textContent = '🔊 Разговор идёт...';
+            callTimer.className = 'call-timer';
+            startTimer('call');
+        }
+        
+        showToast('🔊 Звонок принят!', 'success');
+        db.ref('calls').child(currentChat).child('answer').set('accept');
+        startPeerConnection(false);
+        window._incomingCallData = null;
+    });
+
+    rejectCallBtn.addEventListener('click', function() {
+        var callData = window._incomingCallData;
+        if (callData) {
+            db.ref('calls').child(callData.callerUid).child('answer').set('reject');
+            showToast('❌ Звонок отклонён', 'error');
+            stopIncomingRingtone();
+        }
+        incomingCall.classList.remove('show');
+        window._incomingCallData = null;
+        isIncomingCallActive = false;
+    });
+
+    // ====== АУДИО ======
+    function getAudioDevices() {
+        if (!navigator.mediaDevices) {
+            audioStatus.textContent = '⚠️ Ваш браузер не поддерживает аудио';
+            return;
+        }
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(function(stream) {
+                stream.getTracks().forEach(function(t) { t.stop(); });
+                return navigator.mediaDevices.enumerateDevices();
+            })
+            .then(function(devices) {
+                var inputs = devices.filter(function(d) { return d.kind === 'audioinput'; });
+                audioInputSelect.innerHTML = '<option value="">Выберите микрофон...</option>';
+                for (var i = 0; i < inputs.length; i++) {
+                    var opt = document.createElement('option');
+                    opt.value = inputs[i].deviceId;
+                    opt.textContent = inputs[i].label || 'Микрофон ' + (i + 1);
+                    audioInputSelect.appendChild(opt);
+                }
+                var outputs = devices.filter(function(d) { return d.kind === 'audiooutput'; });
+                audioOutputSelect.innerHTML = '<option value="">Выберите динамики...</option>';
+                for (var j = 0; j < outputs.length; j++) {
+                    var opt2 = document.createElement('option');
+                    opt2.value = outputs[j].deviceId;
+                    opt2.textContent = outputs[j].label || 'Динамики ' + (j + 1);
+                    audioOutputSelect.appendChild(opt2);
+                }
+                var savedInput = localStorage.getItem('discard_audio_input');
+                var savedOutput = localStorage.getItem('discard_audio_output');
+                if (savedInput) audioInputSelect.value = savedInput;
+                if (savedOutput) audioOutputSelect.value = savedOutput;
+                audioStatus.textContent = '✅ Найдено микрофонов: ' + inputs.length + ', динамиков: ' + outputs.length;
+            })
+            .catch(function(err) {
+                audioStatus.textContent = '⚠️ Нет доступа к микрофону: ' + err.message;
+            });
+    }
+
+    testMicBtn.addEventListener('click', function() {
+        var deviceId = audioInputSelect.value;
+        var constraints = { audio: { deviceId: deviceId ? { exact: deviceId } : undefined } };
+        navigator.mediaDevices.getUserMedia(constraints)
+            .then(function(stream) {
+                audioStatus.textContent = '🎤 Микрофон работает!';
+                showToast('🎤 Микрофон работает!', 'success');
+                setTimeout(function() {
+                    audioStatus.textContent = '✅ Микрофон проверен';
+                    stream.getTracks().forEach(function(t) { t.stop(); });
+                }, 2000);
+            })
+            .catch(function(err) {
+                audioStatus.textContent = '❌ Ошибка микрофона: ' + err.message;
+                showToast('❌ Ошибка микрофона: ' + err.message, 'error');
+            });
+    });
+
+    testOutputBtn.addEventListener('click', function() {
+        try {
+            var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            var oscillator = audioCtx.createOscillator();
+            var gainNode = audioCtx.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            oscillator.frequency.value = 440;
+            gainNode.gain.value = 0.3;
+            oscillator.start();
+            audioStatus.textContent = '🔊 Динамики работают (440 Гц)';
+            showToast('🔊 Динамики работают!', 'success');
+            setTimeout(function() {
+                oscillator.stop();
+                audioStatus.textContent = '✅ Динамики проверены';
+            }, 1500);
+        } catch (err) {
+            audioStatus.textContent = '❌ Ошибка динамиков: ' + err.message;
+            showToast('❌ Ошибка динамиков: ' + err.message, 'error');
+        }
+    });
+
+    audioInputSelect.addEventListener('change', function() {
+        localStorage.setItem('discard_audio_input', audioInputSelect.value);
+    });
+    audioOutputSelect.addEventListener('change', function() {
+        localStorage.setItem('discard_audio_output', audioOutputSelect.value);
+    });
 
     // ====== АВТОРИЗАЦИЯ ======
     function showError(msg, hint) {
@@ -2193,141 +3031,35 @@
         }
         stopRingtone();
         stopIncomingRingtone();
-        if (typeof endCall === 'function') endCall();
+        endCall();
         db.ref('calls').off();
         callBtn.style.display = 'none';
         settingsModal.classList.remove('show');
         showToast('👋 Вы вышли', 'info');
     });
 
-    // ====== ИНИЦИАЛИЗАЦИЯ ======
-    function initChat(uid) {
-        var userRef = db.ref('users').child(uid);
-        userRef.once('value', function(snap) {
+    // ====== ЗАГРУЗКА ПОЛЬЗОВАТЕЛЕЙ ======
+    function loadUsers() {
+        var usersRef = db.ref('users');
+        usersRef.on('value', function(snap) {
             var data = snap.val();
-            if (data) {
-                currentUser = {
-                    uid: uid,
-                    username: data.username || 'user',
-                    name: data.name || 'Пользователь',
-                    description: data.description || '',
-                    email: data.email || '',
-                    avatar: data.avatar || '👤'
-                };
-                document.querySelector('.discard-brand span').textContent = 'Дискард (@' + currentUser.username + ')';
-                sidebarUserName.textContent = currentUser.name;
-                document.getElementById('sidebarUserUsername').textContent = '@' + currentUser.username;
-                headerAvatar.textContent = currentUser.avatar || '👤';
-                
-                loadBlocks();
-                loadUsers();
-                loadChannels();
-                setupSettings();
-                getAudioDevices();
-                listenForCalls();
-                
-                // Обработчики для отправки сообщений
-                document.getElementById('sendBtn').addEventListener('click', sendMessage);
-                document.getElementById('msgInput').addEventListener('keydown', function(e) {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        sendMessage();
-                    }
-                });
-                
-                callBtn.addEventListener('click', function() {
-                    playNotificationSound();
-                    startCall();
-                });
+            if (!data) {
+                allUsers = [];
+                return;
             }
+            var keys = Object.keys(data);
+            var result = [];
+            for (var i = 0; i < keys.length; i++) {
+                var uid = keys[i];
+                if (uid !== currentUser.uid) {
+                    var userData = data[uid];
+                    userData.uid = uid;
+                    result.push(userData);
+                }
+            }
+            allUsers = result;
         });
     }
-
-    // ====== АУДИО ======
-    function getAudioDevices() {
-        if (!navigator.mediaDevices) {
-            audioStatus.textContent = '⚠️ Ваш браузер не поддерживает аудио';
-            return;
-        }
-        navigator.mediaDevices.getUserMedia({ audio: true })
-            .then(function(stream) {
-                stream.getTracks().forEach(function(t) { t.stop(); });
-                return navigator.mediaDevices.enumerateDevices();
-            })
-            .then(function(devices) {
-                var inputs = devices.filter(function(d) { return d.kind === 'audioinput'; });
-                audioInputSelect.innerHTML = '<option value="">Выберите микрофон...</option>';
-                for (var i = 0; i < inputs.length; i++) {
-                    var opt = document.createElement('option');
-                    opt.value = inputs[i].deviceId;
-                    opt.textContent = inputs[i].label || 'Микрофон ' + (i + 1);
-                    audioInputSelect.appendChild(opt);
-                }
-                var outputs = devices.filter(function(d) { return d.kind === 'audiooutput'; });
-                audioOutputSelect.innerHTML = '<option value="">Выберите динамики...</option>';
-                for (var j = 0; j < outputs.length; j++) {
-                    var opt2 = document.createElement('option');
-                    opt2.value = outputs[j].deviceId;
-                    opt2.textContent = outputs[j].label || 'Динамики ' + (j + 1);
-                    audioOutputSelect.appendChild(opt2);
-                }
-                var savedInput = localStorage.getItem('discard_audio_input');
-                var savedOutput = localStorage.getItem('discard_audio_output');
-                if (savedInput) audioInputSelect.value = savedInput;
-                if (savedOutput) audioOutputSelect.value = savedOutput;
-                audioStatus.textContent = '✅ Найдено микрофонов: ' + inputs.length + ', динамиков: ' + outputs.length;
-            })
-            .catch(function(err) {
-                audioStatus.textContent = '⚠️ Нет доступа к микрофону: ' + err.message;
-            });
-    }
-
-    testMicBtn.addEventListener('click', function() {
-        var deviceId = audioInputSelect.value;
-        var constraints = { audio: { deviceId: deviceId ? { exact: deviceId } : undefined } };
-        navigator.mediaDevices.getUserMedia(constraints)
-            .then(function(stream) {
-                audioStatus.textContent = '🎤 Микрофон работает!';
-                showToast('🎤 Микрофон работает!', 'success');
-                setTimeout(function() {
-                    audioStatus.textContent = '✅ Микрофон проверен';
-                    stream.getTracks().forEach(function(t) { t.stop(); });
-                }, 2000);
-            })
-            .catch(function(err) {
-                audioStatus.textContent = '❌ Ошибка микрофона: ' + err.message;
-                showToast('❌ Ошибка микрофона: ' + err.message, 'error');
-            });
-    });
-
-    testOutputBtn.addEventListener('click', function() {
-        try {
-            var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            var oscillator = audioCtx.createOscillator();
-            var gainNode = audioCtx.createGain();
-            oscillator.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-            oscillator.frequency.value = 440;
-            gainNode.gain.value = 0.3;
-            oscillator.start();
-            audioStatus.textContent = '🔊 Динамики работают (440 Гц)';
-            showToast('🔊 Динамики работают!', 'success');
-            setTimeout(function() {
-                oscillator.stop();
-                audioStatus.textContent = '✅ Динамики проверены';
-            }, 1500);
-        } catch (err) {
-            audioStatus.textContent = '❌ Ошибка динамиков: ' + err.message;
-            showToast('❌ Ошибка динамиков: ' + err.message, 'error');
-        }
-    });
-
-    audioInputSelect.addEventListener('change', function() {
-        localStorage.setItem('discard_audio_input', audioInputSelect.value);
-    });
-    audioOutputSelect.addEventListener('change', function() {
-        localStorage.setItem('discard_audio_output', audioOutputSelect.value);
-    });
 
     // ====== НАСТРОЙКИ ======
     function setupSettings() {
@@ -2431,57 +3163,49 @@
         });
     }
 
-    // ====== ВХОДЯЩИЕ ЗВОНКИ (упрощённо) ======
-    function listenForCalls() {
-        if (!currentUser) return;
-        var callsRef = db.ref('calls');
-        callsRef.off();
-        callsRef.on('child_added', function(snap) {
+    // ====== ИНИЦИАЛИЗАЦИЯ ======
+    function initChat(uid) {
+        var userRef = db.ref('users').child(uid);
+        userRef.once('value', function(snap) {
             var data = snap.val();
-            var callerUid = snap.key;
-            if (data.from === currentUser.uid) return;
-            if (isBlocked(callerUid)) return;
-            
-            playNotificationSound();
-            showToast('📞 Входящий звонок от ' + (data.fromName || 'Неизвестного'), 'info');
-            
-            incomingCall.classList.add('show');
-            callerName.textContent = data.fromName || 'Неизвестный';
-            window._incomingCallData = {
-                callerUid: callerUid,
-                callData: data
-            };
-            isIncomingCallActive = true;
+            if (data) {
+                currentUser = {
+                    uid: uid,
+                    username: data.username || 'user',
+                    name: data.name || 'Пользователь',
+                    description: data.description || '',
+                    email: data.email || '',
+                    avatar: data.avatar || '👤'
+                };
+                document.querySelector('.discard-brand span').textContent = 'Дискард (@' + currentUser.username + ')';
+                sidebarUserName.textContent = currentUser.name;
+                document.getElementById('sidebarUserUsername').textContent = '@' + currentUser.username;
+                headerAvatar.textContent = currentUser.avatar || '👤';
+                
+                loadBlocks();
+                loadUsers();
+                loadChannels();
+                setupSettings();
+                getAudioDevices();
+                listenForCalls();
+                
+                document.getElementById('sendBtn').addEventListener('click', sendMessage);
+                document.getElementById('msgInput').addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        sendMessage();
+                    }
+                });
+                
+                callBtn.addEventListener('click', function() {
+                    playNotificationSound();
+                    startCall();
+                });
+            }
         });
     }
 
-    acceptCallBtn.addEventListener('click', function() {
-        var callData = window._incomingCallData;
-        if (!callData) return;
-        incomingCall.classList.remove('show');
-        stopIncomingRingtone();
-        currentChat = callData.callerUid;
-        currentChatType = 'dm';
-        isIncomingCallActive = false;
-        
-        showToast('🔊 Звонок принят!', 'success');
-        db.ref('calls').child(currentChat).child('answer').set('accept');
-        window._incomingCallData = null;
-    });
-
-    rejectCallBtn.addEventListener('click', function() {
-        var callData = window._incomingCallData;
-        if (callData) {
-            db.ref('calls').child(callData.callerUid).child('answer').set('reject');
-            showToast('❌ Звонок отклонён', 'error');
-            stopIncomingRingtone();
-        }
-        incomingCall.classList.remove('show');
-        window._incomingCallData = null;
-        isIncomingCallActive = false;
-    });
-
-    // Обработчик для поиска
+    // ====== ПОИСК ======
     document.getElementById('searchInput').addEventListener('input', function(e) {
         var val = e.target.value.trim().toLowerCase();
         if (!val) {
@@ -2492,7 +3216,6 @@
         var chatList = document.getElementById('chatList');
         chatList.innerHTML = '';
         
-        // Ищем среди пользователей
         var found = false;
         for (var i = 0; i < allUsers.length; i++) {
             var user = allUsers[i];
@@ -2521,7 +3244,6 @@
             }
         }
         
-        // Ищем среди каналов
         var channelKeys = Object.keys(myChannels);
         for (var j = 0; j < channelKeys.length; j++) {
             var cid = channelKeys[j];
@@ -2549,7 +3271,7 @@
         }
     });
 
-    console.log('🔥 Дискард — с каналами, DM, блокировкой и удалением чатов!');
+    console.log('🔥 Дискард — с загрузкой изображений!');
 </script>
 </body>
 </html>
