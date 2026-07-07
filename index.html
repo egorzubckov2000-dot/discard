@@ -1057,23 +1057,22 @@
                 
                 showToast('🖥️ Трансляция экрана начата!', 'success');
                 
-                // Добавляем видео-трек к существующему соединению
+                // ДОБАВЛЯЕМ ВИДЕО-ТРЕК В WEBRTC (ЧТОБЫ СОБЕСЕДНИК ВИДЕЛ)
                 if (peerConnection) {
                     var videoTrack = stream.getVideoTracks()[0];
                     if (videoTrack) {
-                        var senders = peerConnection.getSenders();
-                        var existingVideoSender = null;
-                        senders.forEach(function(sender) {
-                            if (sender.track && sender.track.kind === 'video') {
-                                existingVideoSender = sender;
-                            }
-                        });
-                        if (existingVideoSender) {
-                            existingVideoSender.replaceTrack(videoTrack);
-                        } else {
-                            peerConnection.addTrack(videoTrack, stream);
-                        }
+                        // ПРЯМО ДОБАВЛЯЕМ НОВЫЙ ТРЕК
+                        var sender = peerConnection.addTrack(videoTrack, stream);
+                        console.log('✅ Видео-трек добавлен в WebRTC');
                     }
+                    // Добавляем аудио-трек, если есть
+                    var audioTrack = stream.getAudioTracks()[0];
+                    if (audioTrack) {
+                        peerConnection.addTrack(audioTrack, stream);
+                        console.log('✅ Аудио-трек добавлен в WebRTC');
+                    }
+                } else {
+                    console.warn('⚠️ peerConnection отсутствует');
                 }
             })
             .catch(function(err) {
@@ -2014,7 +2013,7 @@
         });
     }
 
-    console.log('🔥 Дискард — поиск пользователей, трансляция экрана с просмотром');
+    console.log('🔥 Дискард — экран видит собеседник!');
 </script>
 </body>
 </html>
