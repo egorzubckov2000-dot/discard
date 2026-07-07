@@ -259,6 +259,15 @@
             padding: 10px 16px; border-radius: 18px; background: #383a40;
             color: #dbdee1; font-size: 15px; line-height: 1.5; word-wrap: break-word;
             box-shadow: 0 2px 4px rgba(0,0,0,0.2); animation: fadeUp 0.12s ease;
+            position: relative;
+            cursor: pointer;
+            transition: 0.15s;
+        }
+        .message:hover {
+            background: #404249;
+        }
+        .message.self:hover {
+            background: #4a55c4;
         }
         .message.self { align-self: flex-end; background: #5865f2; color: #fff; border-bottom-right-radius: 6px; }
         .message.other { align-self: flex-start; background: #383a40; border-bottom-left-radius: 6px; }
@@ -742,6 +751,37 @@
             background: #4a2a2a;
         }
 
+        .msg-menu {
+            position: fixed;
+            background: #2b2d31;
+            border-radius: 12px;
+            padding: 6px 0;
+            min-width: 150px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.8);
+            border: 1px solid #3a3c42;
+            z-index: 5000;
+            display: none;
+        }
+        .msg-menu-item {
+            padding: 10px 20px;
+            color: #f2f3f5;
+            cursor: pointer;
+            transition: 0.15s;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .msg-menu-item:hover {
+            background: #383a40;
+        }
+        .msg-menu-item.danger {
+            color: #e74c3c;
+        }
+        .msg-menu-item.danger:hover {
+            background: #4a2a2a;
+        }
+
         .image-viewer {
             position: fixed;
             top: 0;
@@ -1037,10 +1077,8 @@
     firebase.initializeApp(firebaseConfig);
     var db = firebase.database();
 
-    // ====== IMGBB API KEY (бесплатный) ======
     var IMGBB_API_KEY = 'fbbbbb0c9ca28f9bd643d172d95d281c';
 
-    // ====== ЗАГРУЗКА НА IMGBB ======
     function uploadImageToImgBB(file) {
         return new Promise(function(resolve, reject) {
             var formData = new FormData();
@@ -1166,12 +1204,11 @@
     var isScreenSharing = false;
     var blockedUsers = {};
     var myChannels = {};
-    var channelMembers = {};
 
     var selectedFile = null;
     var isUploading = false;
 
-    // ====== ЗВУКИ ======
+    // ЗВУКИ
     var ringtoneAudio = null;
     var incomingRingtoneAudio = null;
     var endCallAudio = null;
@@ -1231,7 +1268,6 @@
         ]
     };
 
-    // ====== УВЕДОМЛЕНИЯ ======
     function showToast(message, type) {
         if (type === undefined) type = 'info';
         toast.textContent = message;
@@ -1346,7 +1382,7 @@
         fileInput.value = '';
     }
 
-    // ====== ПРОСМОТР ИЗОБРАЖЕНИЯ В ПОЛНЫЙ ЭКРАН ======
+    // ====== ПРОСМОТР ИЗОБРАЖЕНИЯ ======
     function openImageViewer(src) {
         imageViewerImg.src = src;
         imageViewer.classList.add('show');
@@ -1362,6 +1398,127 @@
             imageViewer.classList.remove('show');
             imageViewerImg.src = '';
         }
+    });
+
+    // ====== УДАЛЕНИЕ СООБЩЕНИЙ ======
+    function deleteMessage(chatType, chatId, messageId, senderId) {
+        if (!currentUser) return;
+        
+        var canDelete = false;
+        
+        if (senderId === currentUser.uid) {
+            canDelete = true;
+        } else if (chatType === 'channel') {
+            var channel = myChannels[chatId];
+            if (channel && channel.owner === currentUser.uid) {
+                canDelete = true;
+            }
+        }
+        
+        if (!canDelete) {
+            showToast('❌ Нет прав на удаление этого сообщения', 'error');
+            return;
+        }
+        
+        if (!confirm('🗑️ Удалить это сообщение?')) return;
+        
+        if (chatType === 'dm') {
+            var ref1 = db.ref('messages').child(chatId).child(currentUser.uid).child(messageId);
+            var ref2 = db.ref('messages').child(currentUser.uid).child(chatId).child(messageId);
+            
+            var updates = {};
+            updates[ref1.toString()] = null;
+            updates[ref2.toString()] = null;
+            
+            db.ref().update(updates).then(function() {
+                showToast('✅ Сообщение удалено', 'success');
+            }).catch(function(err) {
+                showToast('❌ Ошибка: ' + err.message, 'error');
+            });
+        } else if (chatType === 'channel') {
+            var ref = db.ref('channel-messages').child(chatId).child(messageId);
+            ref.remove().then(function() {
+                showToast('✅ Сообщение удалено', 'success');
+            }).catch(function(err) {
+                showToast('❌ Ошибка: ' + err.message, 'error');
+            });
+        }
+    }
+
+    // ====== МЕНЮ ДЛЯ СООБЩЕНИЯ ======
+    var msgMenu = document.createElement('div');
+    msgMenu.className = 'msg-menu';
+    msgMenu.id = 'msgMenu';
+    msgMenu.style.display = 'none';
+    document.body.appendChild(msgMenu);
+
+    msgMenu.innerHTML = 
+        '<div class="msg-menu-item danger" id="msgMenuDelete">🗑️ Удалить сообщение</div>';
+
+    var currentMsgElement = null;
+
+    function showMessageMenu(event, element) {
+        currentMsgElement = element;
+        msgMenu.style.display = 'block';
+        msgMenu.style.left = Math.min(event.clientX - 60, window.innerWidth - 180) + 'px';
+        msgMenu.style.top = Math.min(event.clientY - 10, window.innerHeight - 60) + 'px';
+        
+        var senderId = element.getAttribute('data-sender');
+        var chatType = element.getAttribute('data-chattype');
+        var chatId = element.getAttribute('data-chat');
+        
+        var canDelete = false;
+        if (senderId === currentUser.uid) {
+            canDelete = true;
+        } else if (chatType === 'channel') {
+            var channel = myChannels[chatId];
+            if (channel && channel.owner === currentUser.uid) {
+                canDelete = true;
+            }
+        }
+        
+        document.getElementById('msgMenuDelete').style.display = canDelete ? 'flex' : 'none';
+        if (!canDelete) {
+            document.getElementById('msgMenuDelete').innerHTML = '🔒 Нет прав';
+            document.getElementById('msgMenuDelete').style.opacity = '0.5';
+            document.getElementById('msgMenuDelete').style.cursor = 'not-allowed';
+        } else {
+            document.getElementById('msgMenuDelete').innerHTML = '🗑️ Удалить сообщение';
+            document.getElementById('msgMenuDelete').style.opacity = '1';
+            document.getElementById('msgMenuDelete').style.cursor = 'pointer';
+        }
+    }
+
+    document.addEventListener('click', function(e) {
+        if (!msgMenu.contains(e.target) && !e.target.closest('.message')) {
+            msgMenu.style.display = 'none';
+        }
+    });
+
+    document.getElementById('msgMenuDelete').addEventListener('click', function() {
+        if (!currentMsgElement) return;
+        
+        var messageId = currentMsgElement.getAttribute('data-id');
+        var senderId = currentMsgElement.getAttribute('data-sender');
+        var chatType = currentMsgElement.getAttribute('data-chattype');
+        var chatId = currentMsgElement.getAttribute('data-chat');
+        
+        if (senderId !== currentUser.uid) {
+            if (chatType !== 'channel') {
+                showToast('❌ Нельзя удалить чужое сообщение', 'error');
+                msgMenu.style.display = 'none';
+                return;
+            }
+            var channel = myChannels[chatId];
+            if (!channel || channel.owner !== currentUser.uid) {
+                showToast('❌ Только создатель канала может удалять чужие сообщения', 'error');
+                msgMenu.style.display = 'none';
+                return;
+            }
+        }
+        
+        deleteMessage(chatType, chatId, messageId, senderId);
+        msgMenu.style.display = 'none';
     });
 
     // ====== КАНАЛЫ ======
@@ -1905,6 +2062,9 @@
         var div = document.createElement('div');
         div.className = 'message ' + (isSelf ? 'self' : 'other');
         div.setAttribute('data-id', data.id || Date.now());
+        div.setAttribute('data-sender', data.sender || '');
+        div.setAttribute('data-chat', currentChat || '');
+        div.setAttribute('data-chattype', currentChatType || 'dm');
 
         var userSpan = document.createElement('div');
         userSpan.className = 'msg-user';
@@ -1946,6 +2106,11 @@
         var d = new Date(data.time);
         timeSpan.innerText = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
         div.appendChild(timeSpan);
+
+        div.addEventListener('click', function(e) {
+            e.stopPropagation();
+            showMessageMenu(e, this);
+        });
 
         return div;
     }
@@ -3258,7 +3423,7 @@
         }
     });
 
-    console.log('🔥 Дискард — с бесплатной загрузкой изображений через ImgBB!');
+    console.log('🔥 Дискард — с удалением сообщений!');
 </script>
 </body>
 </html>
