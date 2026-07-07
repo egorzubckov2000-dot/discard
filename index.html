@@ -553,10 +553,10 @@
                 <div class="icon">📡</div>
                 <span>Дискард</span>
             </div>
-            <input class="discard-search" id="searchInput" type="text" placeholder="🔍 Поиск по имени или @юзернейму...">
+            <input class="discard-search" id="searchInput" type="text" placeholder="🔍 Введите имя или @юзернейм...">
         </div>
         <div class="chat-list" id="chatList">
-            <div class="empty-state" style="color:#6a6f78; padding:20px; text-align:center;">Нет чатов<br>Найдите пользователя</div>
+            <div class="empty-state" style="color:#6a6f78; padding:20px; text-align:center;">👤 Введите имя или @юзернейм<br>для поиска пользователя</div>
         </div>
         <div class="discard-sidebar-footer">
             <div class="user-info">
@@ -599,7 +599,6 @@
     <div class="call-status" id="callStatus">📞 Вызов...</div>
     <div class="call-timer ringing" id="callTimer">00:00</div>
     
-    <!-- Превью экрана (локальный просмотр) -->
     <div class="screen-preview" id="screenPreview">
         <video id="screenPreviewVideo" autoplay muted playsinline></video>
     </div>
@@ -1704,7 +1703,7 @@
             var data = snap.val();
             if (!data) {
                 allUsers = [];
-                renderChatList();
+                renderChatList('');
                 return;
             }
             var keys = Object.keys(data);
@@ -1718,30 +1717,29 @@
                 }
             }
             allUsers = result;
-            renderChatList();
+            renderChatList(document.getElementById('searchInput').value);
         });
     }
 
     function renderChatList(filter) {
-        if (filter === undefined) filter = '';
         var chatList = document.getElementById('chatList');
         chatList.innerHTML = '';
-        var list = allUsers;
-        if (filter.trim() !== '') {
-            var f = filter.toLowerCase().trim();
-            var filtered = [];
-            for (var i = 0; i < list.length; i++) {
-                var user = list[i];
-                if (user.name.toLowerCase().includes(f) || user.username.toLowerCase().includes(f)) {
-                    filtered.push(user);
-                }
-            }
-            list = filtered;
-        }
-        if (list.length === 0) {
-            chatList.innerHTML = '<div class="empty-state" style="color:#6a6f78; padding:20px; text-align:center;">Никого не найдено</div>';
+        
+        if (!filter || filter.trim() === '') {
+            chatList.innerHTML = '<div class="empty-state" style="color:#6a6f78; padding:20px; text-align:center;">👤 Введите имя или @юзернейм<br>для поиска пользователя</div>';
             return;
         }
+        
+        var f = filter.toLowerCase().trim();
+        var list = allUsers.filter(function(user) {
+            return user.name.toLowerCase().includes(f) || user.username.toLowerCase().includes(f);
+        });
+        
+        if (list.length === 0) {
+            chatList.innerHTML = '<div class="empty-state" style="color:#6a6f78; padding:20px; text-align:center;">❌ Пользователь не найден</div>';
+            return;
+        }
+        
         for (var j = 0; j < list.length; j++) {
             var user = list[j];
             var div = document.createElement('div');
@@ -2016,7 +2014,7 @@
         });
     }
 
-    console.log('🔥 Дискард — с просмотром своего экрана!');
+    console.log('🔥 Дискард — поиск пользователей, трансляция экрана с просмотром');
 </script>
 </body>
 </html>
