@@ -224,13 +224,11 @@
             flex-shrink: 0;
         }
         .call-window .call-name {
-            font-size: 22px;
-            font-weight: 600;
+            font-size: 22px; font-weight: 600;
             margin-bottom: 4px;
         }
         .call-window .call-username {
-            font-size: 14px;
-            color: #7a7f89;
+            font-size: 14px; color: #7a7f89;
             margin-bottom: 16px;
         }
         .call-window .call-status {
@@ -672,8 +670,9 @@
     var isCallActive = false;
     var isIncomingCallActive = false;
 
-    // ====== ЗВУК ОЖИДАНИЯ ======
+    // ====== ЗВУКИ ======
     var ringtoneAudio = null;
+    var endCallAudio = null;
 
     function playRingtone() {
         try {
@@ -695,6 +694,20 @@
             ringtoneAudio.currentTime = 0;
             ringtoneAudio = null;
             console.log('🔊 Гудок остановлен');
+        }
+    }
+
+    function playEndCallSound() {
+        try {
+            endCallAudio = new Audio('https://videotourl.com/audio/1783404137448-4d558e91-f873-46fb-9bfa-f1d343d45ff4.mp3');
+            endCallAudio.loop = false;
+            endCallAudio.volume = 0.7;
+            endCallAudio.play().catch(function(e) {
+                console.warn('Не удалось воспроизвести звук завершения:', e);
+            });
+            console.log('🔊 Звук завершения звонка запущен');
+        } catch(e) {
+            console.warn('Ошибка воспроизведения звука завершения:', e);
         }
     }
 
@@ -798,6 +811,7 @@
                         callTimer.className = 'call-timer ended';
                         showToast('⏰ Собеседник не отвечает', 'error');
                         stopRingtone();
+                        playEndCallSound();
                         endCall();
                     }
                 }, 30000);
@@ -820,6 +834,7 @@
                         answerRef.off();
                         if (callTimeout) clearTimeout(callTimeout);
                         stopRingtone();
+                        playEndCallSound();
                         showToast('❌ Звонок отклонён', 'error');
                         callStatus.textContent = '❌ Звонок отклонён';
                         callTimer.className = 'call-timer ended';
@@ -829,6 +844,7 @@
             })
             .catch(function(err) {
                 stopRingtone();
+                playEndCallSound();
                 showToast('❌ Ошибка: ' + err.message, 'error');
                 console.error('❌ ЗВОНОК ОШИБКА:', err);
                 endCall();
@@ -861,11 +877,13 @@
                 
                 callTimeout = setTimeout(function() {
                     showToast('⏰ Тест завершён', 'info');
+                    playEndCallSound();
                     endCall();
                 }, 30000);
             })
             .catch(function(err) {
                 showToast('❌ Ошибка микрофона: ' + err.message, 'error');
+                playEndCallSound();
                 endCall();
             });
     }
@@ -921,6 +939,7 @@
                 showToast('🔊 Соединение установлено!', 'success');
             } else if (peerConnection.connectionState === 'failed') {
                 showToast('❌ Соединение разорвано', 'error');
+                playEndCallSound();
                 endCall();
             }
         };
@@ -1002,6 +1021,10 @@
     function endCall() {
         console.log('📞 ЗВОНОК: Завершаем звонок');
         stopRingtone();
+        // Проигрываем звук завершения, если звонок был активен
+        if (isCallActive || isRinging) {
+            playEndCallSound();
+        }
         isRinging = false;
         isCallActive = false;
         isIncomingCallActive = false;
@@ -1147,6 +1170,7 @@
         if (callData) {
             db.ref('calls').child(callData.callerUid).child('answer').set('reject');
             showToast('❌ Звонок отклонён', 'error');
+            playEndCallSound();
         }
         incomingCall.classList.remove('show');
         window._incomingCallData = null;
@@ -1764,7 +1788,7 @@
         });
     }
 
-    console.log('🔥 Дискард — с гудками при звонке!');
+    console.log('🔥 Дискард — с гудками и звуком завершения звонка!');
 </script>
 </body>
 </html>
