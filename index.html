@@ -266,7 +266,6 @@
         .message.self .msg-user { color: #c8ccff; }
         .message .msg-time { font-size: 10px; color: #949ba4; margin-top: 4px; align-self: flex-end; }
         .message.self .msg-time { color: #b9bdff; }
-        .message .msg-channel { font-size: 11px; color: #7a7f89; margin-top: 2px; }
         .message .msg-image {
             max-width: 100%;
             max-height: 300px;
@@ -1023,7 +1022,6 @@
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 
 <script>
     var firebaseConfig = {
@@ -1038,7 +1036,34 @@
 
     firebase.initializeApp(firebaseConfig);
     var db = firebase.database();
-    var storage = firebase.storage();
+
+    // ====== IMGBB API KEY (бесплатный) ======
+    var IMGBB_API_KEY = 'fbbbbb0c9ca28f9bd643d172d95d281c';
+
+    // ====== ЗАГРУЗКА НА IMGBB ======
+    function uploadImageToImgBB(file) {
+        return new Promise(function(resolve, reject) {
+            var formData = new FormData();
+            formData.append('image', file);
+            formData.append('key', IMGBB_API_KEY);
+            
+            fetch('https://api.imgbb.com/1/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    resolve(data.data.url);
+                } else {
+                    reject(new Error(data.error.message || 'Ошибка загрузки'));
+                }
+            })
+            .catch(function(err) {
+                reject(err);
+            });
+        });
+    }
 
     // DOM
     var authPage = document.getElementById('authPage');
@@ -1108,7 +1133,6 @@
     var sidebarUserName = document.getElementById('sidebarUserName');
     var channelActions = document.getElementById('channelActions');
 
-    // DOM для изображений
     var fileInput = document.getElementById('fileInput');
     var fileBtn = document.getElementById('fileBtn');
     var previewContainer = document.getElementById('previewContainer');
@@ -1230,47 +1254,16 @@
         } catch(e) {}
     }
 
-    // ====== ЗАГРУЗКА ИЗОБРАЖЕНИЙ ======
-    function uploadImage(file, chatId, chatType) {
-        if (!file || !currentUser) return Promise.reject('Нет файла');
-        
-        var fileExt = file.name.split('.').pop();
-        var fileName = Date.now() + '_' + Math.random().toString(36).substr(2, 6) + '.' + fileExt;
-        var path = 'images/' + chatType + '/' + chatId + '/' + fileName;
-        
-        var uploadTask = storage.ref(path).put(file);
-        
-        return new Promise(function(resolve, reject) {
-            uploadTask.on('state_changed',
-                function(snapshot) {
-                    var progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                    if (progress < 100) {
-                        showToast('📤 Загрузка: ' + Math.round(progress) + '%', 'info');
-                    }
-                },
-                function(error) {
-                    reject(error);
-                },
-                function() {
-                    uploadTask.snapshot.ref.getDownloadURL().then(function(downloadURL) {
-                        resolve(downloadURL);
-                    });
-                }
-            );
-        });
-    }
-
+    // ====== IMGBB ЗАГРУЗКА ======
     function sendMessageWithImage(file) {
         if (!currentChat || !file) return;
         if (isUploading) return;
         
         isUploading = true;
         fileBtn.disabled = true;
+        showToast('📤 Загрузка изображения...', 'info');
         
-        var chatId = currentChat;
-        var chatType = currentChatType || 'dm';
-        
-        uploadImage(file, chatId, chatType)
+        uploadImageToImgBB(file)
             .then(function(imageUrl) {
                 var newMsg = {
                     sender: currentUser.uid,
@@ -1279,6 +1272,9 @@
                     time: Date.now(),
                     id: Date.now() + '_' + Math.random().toString(36).substr(2, 4)
                 };
+                
+                var chatId = currentChat;
+                var chatType = currentChatType || 'dm';
                 
                 if (chatType === 'dm') {
                     var chatRef1 = db.ref('messages').child(chatId).child(currentUser.uid);
@@ -1297,7 +1293,7 @@
                 fileBtn.disabled = false;
             })
             .catch(function(err) {
-                showToast('❌ Ошибка загрузки: ' + err.message, 'error');
+                showToast('❌ Ошибка: ' + err.message, 'error');
                 isUploading = false;
                 fileBtn.disabled = false;
             });
@@ -1404,13 +1400,6 @@
             myChannels = data || {};
             renderSidebar();
         });
-    }
-
-    function getChannelName(channelId) {
-        if (myChannels[channelId]) {
-            return (myChannels[channelId].emoji || '📡') + ' ' + myChannels[channelId].name;
-        }
-        return '📡 Канал';
     }
 
     function isChannelOwner(channelId) {
@@ -1600,7 +1589,6 @@
         var chatList = document.getElementById('chatList');
         chatList.innerHTML = '';
         
-        // Секция каналов
         var channelSection = document.createElement('div');
         channelSection.innerHTML = '<div class="chat-section">📡 КАНАЛЫ <button class="add-btn" id="createChannelBtn">+</button></div>';
         chatList.appendChild(channelSection);
@@ -1645,7 +1633,6 @@
             }
         }
         
-        // Секция личных сообщений
         var dmSection = document.createElement('div');
         dmSection.className = 'chat-section';
         dmSection.textContent = '💬 ЛИЧНЫЕ СООБЩЕНИЯ';
@@ -3271,7 +3258,7 @@
         }
     });
 
-    console.log('🔥 Дискард — с загрузкой изображений!');
+    console.log('🔥 Дискард — с бесплатной загрузкой изображений через ImgBB!');
 </script>
 </body>
 </html>
