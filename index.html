@@ -1084,7 +1084,7 @@
                 <div class="icon">📡</div>
                 <span>Дискард</span>
             </div>
-            <input class="discard-search" id="searchInput" type="text" placeholder="🔍 Поиск...">
+            <input class="discard-search" id="searchInput" type="text" placeholder="🔍 @username или название канала...">
         </div>
         <div class="chat-list" id="chatList">
             <div class="empty-state" id="emptyChats">💬 Нет чатов</div>
@@ -1122,12 +1122,10 @@
             </div>
         </div>
 
-        <!-- Чат -->
         <div class="discard-chat" id="chatBox">
             <div class="empty-state">👋 Начните переписку</div>
         </div>
 
-        <!-- Правила -->
         <div class="channel-rules" id="rulesBox">
             <textarea class="rules-editor" id="rulesText" placeholder="// Правила канала\n// Используй // для комментариев\n\nfunction rules() {\n    return {\n        noSpam: true,\n        respect: true,\n        noNSFW: true\n    }\n}"></textarea>
             <div class="rules-toolbar">
@@ -1138,7 +1136,6 @@
             <div class="rules-preview" id="rulesPreview"></div>
         </div>
 
-        <!-- Голосовой чат -->
         <div class="channel-voice" id="voiceBox">
             <div class="voice-status" id="voiceStatus">🎙️ Голосовой канал</div>
             <div class="voice-controls">
@@ -1339,6 +1336,117 @@
         });
     }
 
+    // ====== ЗВУКИ ЗВОНКА (ВСТРОЕННЫЕ) ======
+    var ringtoneAudioCtx = null;
+    var ringtoneOscillator = null;
+    var incomingRingtoneCtx = null;
+    var incomingOscillator = null;
+    var endCallSoundCtx = null;
+
+    function playRingtone() {
+        try {
+            ringtoneAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            ringtoneOscillator = ringtoneAudioCtx.createOscillator();
+            var gainNode = ringtoneAudioCtx.createGain();
+            ringtoneOscillator.connect(gainNode);
+            gainNode.connect(ringtoneAudioCtx.destination);
+            ringtoneOscillator.type = 'square';
+            ringtoneOscillator.frequency.value = 400;
+            gainNode.gain.value = 0.15;
+            ringtoneOscillator.start();
+            
+            // Паузы (гудок)
+            var interval = setInterval(function() {
+                if (!ringtoneAudioCtx) {
+                    clearInterval(interval);
+                    return;
+                }
+                gainNode.gain.value = gainNode.gain.value > 0.1 ? 0 : 0.15;
+            }, 500);
+            
+            ringtoneOscillator._interval = interval;
+        } catch(e) {}
+    }
+
+    function stopRingtone() {
+        if (ringtoneOscillator) {
+            try {
+                if (ringtoneOscillator._interval) clearInterval(ringtoneOscillator._interval);
+                ringtoneOscillator.stop();
+                ringtoneOscillator.disconnect();
+            } catch(e) {}
+            ringtoneOscillator = null;
+        }
+        if (ringtoneAudioCtx) {
+            try { ringtoneAudioCtx.close(); } catch(e) {}
+            ringtoneAudioCtx = null;
+        }
+    }
+
+    function playIncomingRingtone() {
+        try {
+            incomingRingtoneCtx = new (window.AudioContext || window.webkitAudioContext)();
+            incomingOscillator = incomingRingtoneCtx.createOscillator();
+            var gainNode = incomingRingtoneCtx.createGain();
+            incomingOscillator.connect(gainNode);
+            gainNode.connect(incomingRingtoneCtx.destination);
+            incomingOscillator.type = 'sine';
+            incomingOscillator.frequency.value = 600;
+            gainNode.gain.value = 0.2;
+            incomingOscillator.start();
+            
+            var interval = setInterval(function() {
+                if (!incomingRingtoneCtx) {
+                    clearInterval(interval);
+                    return;
+                }
+                gainNode.gain.value = gainNode.gain.value > 0.1 ? 0 : 0.2;
+            }, 400);
+            
+            incomingOscillator._interval = interval;
+        } catch(e) {}
+    }
+
+    function stopIncomingRingtone() {
+        if (incomingOscillator) {
+            try {
+                if (incomingOscillator._interval) clearInterval(incomingOscillator._interval);
+                incomingOscillator.stop();
+                incomingOscillator.disconnect();
+            } catch(e) {}
+            incomingOscillator = null;
+        }
+        if (incomingRingtoneCtx) {
+            try { incomingRingtoneCtx.close(); } catch(e) {}
+            incomingRingtoneCtx = null;
+        }
+    }
+
+    function playEndCallSound() {
+        try {
+            endCallSoundCtx = new (window.AudioContext || window.webkitAudioContext)();
+            var oscillator = endCallSoundCtx.createOscillator();
+            var gainNode = endCallSoundCtx.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(endCallSoundCtx.destination);
+            oscillator.type = 'sine';
+            oscillator.frequency.value = 800;
+            gainNode.gain.value = 0.2;
+            oscillator.start();
+            setTimeout(function() {
+                oscillator.frequency.value = 600;
+            }, 200);
+            setTimeout(function() {
+                oscillator.frequency.value = 400;
+            }, 400);
+            setTimeout(function() {
+                oscillator.stop();
+                oscillator.disconnect();
+                endCallSoundCtx.close();
+            }, 700);
+        } catch(e) {}
+    }
+
     // DOM
     var authPage = document.getElementById('authPage');
     var app = document.getElementById('app');
@@ -1461,54 +1569,6 @@
     var selectedFile = null;
     var isUploading = false;
 
-    // ЗВУКИ
-    var ringtoneAudio = null;
-    var incomingRingtoneAudio = null;
-    var endCallAudio = null;
-
-    function playRingtone() {
-        try {
-            ringtoneAudio = new Audio('https://videotourl.com/audio/1783403743728-653f4305-d740-4c22-8e74-9bc9a6718f05.mp3');
-            ringtoneAudio.loop = true;
-            ringtoneAudio.volume = 0.7;
-            ringtoneAudio.play().catch(function(e) {});
-        } catch(e) {}
-    }
-
-    function stopRingtone() {
-        if (ringtoneAudio) {
-            ringtoneAudio.pause();
-            ringtoneAudio.currentTime = 0;
-            ringtoneAudio = null;
-        }
-    }
-
-    function playIncomingRingtone() {
-        try {
-            incomingRingtoneAudio = new Audio('https://videotourl.com/audio/1783404587641-324cb027-da79-47e3-a2d6-4d7e6bf7e6cd.mp3');
-            incomingRingtoneAudio.loop = true;
-            incomingRingtoneAudio.volume = 0.7;
-            incomingRingtoneAudio.play().catch(function(e) {});
-        } catch(e) {}
-    }
-
-    function stopIncomingRingtone() {
-        if (incomingRingtoneAudio) {
-            incomingRingtoneAudio.pause();
-            incomingRingtoneAudio.currentTime = 0;
-            incomingRingtoneAudio = null;
-        }
-    }
-
-    function playEndCallSound() {
-        try {
-            endCallAudio = new Audio('https://videotourl.com/audio/1783404137448-4d558e91-f873-46fb-9bfa-f1d343d45ff4.mp3');
-            endCallAudio.loop = false;
-            endCallAudio.volume = 0.7;
-            endCallAudio.play().catch(function(e) {});
-        } catch(e) {}
-    }
-
     var servers = {
         iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
@@ -1539,11 +1599,11 @@
             gainNode.gain.value = 0.2;
             oscillator.start();
             setTimeout(function() { oscillator.frequency.value = 1000; }, 200);
-            setTimeout(function() { oscillator.stop(); }, 400);
+            setTimeout(function() { oscillator.stop(); audioCtx.close(); }, 400);
         } catch(e) {}
     }
 
-    // ====== УДАЛЕНИЕ СООБЩЕНИЙ (НОРМАЛЬНОЕ) ======
+    // ====== УДАЛЕНИЕ СООБЩЕНИЙ ======
     function deleteMessage(chatType, chatId, messageId, senderId) {
         if (!currentUser) return;
         
@@ -1565,7 +1625,6 @@
         
         if (!confirm('🗑️ Удалить это сообщение?')) return;
         
-        // Находим элемент сообщения и добавляем анимацию
         var msgElement = document.querySelector('.message[data-id="' + messageId + '"]');
         if (msgElement) {
             msgElement.classList.add('removing');
@@ -1670,9 +1729,7 @@
 
     // ====== ПРАВИЛА С КОДОМ ======
     function highlightCode(text) {
-        // Простая подсветка для кода
         var keywords = ['function', 'return', 'var', 'let', 'const', 'if', 'else', 'for', 'while', 'class', 'new', 'this', 'true', 'false', 'null', 'undefined'];
-        var operators = ['=', '+', '-', '*', '/', '>', '<', '>=', '<=', '==', '!=', '===', '!==', '&&', '||', '!'];
         
         var lines = text.split('\n');
         var result = [];
@@ -1681,28 +1738,23 @@
             var line = lines[i];
             var escaped = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
             
-            // Комментарии
             var commentIndex = escaped.indexOf('//');
             if (commentIndex !== -1) {
                 var beforeComment = escaped.substring(0, commentIndex);
                 var comment = escaped.substring(commentIndex);
-                // Подсветка комментария
                 comment = '<span class="hljs-comment">' + comment + '</span>';
                 escaped = beforeComment + comment;
             }
             
-            // Строки
             escaped = escaped.replace(/"([^"]*)"/g, '<span class="hljs-string">"$1"</span>');
             escaped = escaped.replace(/'([^']*)'/g, '<span class="hljs-string">\'$1\'</span>');
             
-            // Ключевые слова
             for (var k = 0; k < keywords.length; k++) {
                 var word = keywords[k];
                 var regex = new RegExp('\\b' + word + '\\b', 'g');
                 escaped = escaped.replace(regex, '<span class="hljs-keyword">' + word + '</span>');
             }
             
-            // Числа
             escaped = escaped.replace(/\b(\d+)\b/g, '<span class="hljs-number">$1</span>');
             
             result.push(escaped);
@@ -1729,7 +1781,6 @@
 
     formatRulesBtn.addEventListener('click', function() {
         var text = rulesText.value;
-        // Простое форматирование - убираем лишние пробелы и пустые строки
         var lines = text.split('\n');
         var formatted = [];
         for (var i = 0; i < lines.length; i++) {
@@ -1790,7 +1841,6 @@
             });
     });
 
-    // Трансляция экрана в голосовом чате
     function toggleVoiceScreen() {
         if (!isVoiceActive) {
             showToast('❌ Сначала подключитесь к голосовому каналу', 'error');
@@ -1821,12 +1871,6 @@
                 voiceScreenVideo.srcObject = stream;
                 voiceScreenVideo.play();
                 showToast('🖥️ Трансляция экрана начата!', 'success');
-                
-                // Добавляем звук экрана в аудио-поток
-                var audioTrack = stream.getAudioTracks()[0];
-                if (audioTrack && localStream) {
-                    // Смешиваем аудио
-                }
             })
             .catch(function(err) {
                 showToast('❌ Ошибка: ' + err.message, 'error');
@@ -1852,7 +1896,6 @@
                 loadRules(currentChat);
             }
             if (tab === 'voice' && currentChat && currentChatType === 'channel') {
-                // Восстанавливаем состояние голосового чата
                 if (isVoiceActive) {
                     voiceBtn.textContent = '🔴 Отключиться';
                     voiceBtn.classList.add('in-call');
@@ -3884,50 +3927,60 @@
         });
     }
 
-    // ====== ПОИСК ======
+    // ====== ПОИСК (ТОЛЬКО @ ДЛЯ ПОЛЬЗОВАТЕЛЕЙ) ======
     document.getElementById('searchInput').addEventListener('input', function(e) {
-        var val = e.target.value.trim().toLowerCase();
+        var val = e.target.value.trim();
+        var chatList = document.getElementById('chatList');
+        
         if (!val) {
             renderSidebar();
             return;
         }
         
-        var chatList = document.getElementById('chatList');
         chatList.innerHTML = '';
-        
         var found = false;
-        for (var i = 0; i < allUsers.length; i++) {
-            var user = allUsers[i];
-            if (isBlocked(user.uid)) continue;
-            if (user.name.toLowerCase().includes(val) || user.username.toLowerCase().includes(val)) {
-                found = true;
-                var div = document.createElement('div');
-                div.className = 'chat-item';
-                div.dataset.uid = user.uid;
-                div.innerHTML = 
-                    '<div class="avatar">' + (user.avatar || '👤') + '</div>' +
-                    '<div class="chat-info">' +
-                    '<div class="chat-name">' + user.name + '</div>' +
-                    '<div class="chat-username">@' + user.username + '</div>' +
-                    '</div>';
-                div.addEventListener('click', function(u) {
-                    return function() { 
-                        if (isBlocked(u.uid)) {
-                            showToast('🔒 Пользователь заблокирован', 'error');
-                            return;
-                        }
-                        openDM(u.uid); 
-                    };
-                }(user));
-                chatList.appendChild(div);
+        
+        // Проверяем, начинается ли с @ (поиск пользователей)
+        if (val.startsWith('@')) {
+            var username = val.substring(1).toLowerCase();
+            for (var i = 0; i < allUsers.length; i++) {
+                var user = allUsers[i];
+                if (isBlocked(user.uid)) continue;
+                if (user.username.toLowerCase().includes(username) || user.name.toLowerCase().includes(username)) {
+                    found = true;
+                    var div = document.createElement('div');
+                    div.className = 'chat-item';
+                    div.dataset.uid = user.uid;
+                    div.innerHTML = 
+                        '<div class="avatar">' + (user.avatar || '👤') + '</div>' +
+                        '<div class="chat-info">' +
+                        '<div class="chat-name">' + user.name + '</div>' +
+                        '<div class="chat-username">@' + user.username + '</div>' +
+                        '</div>';
+                    div.addEventListener('click', function(u) {
+                        return function() { 
+                            if (isBlocked(u.uid)) {
+                                showToast('🔒 Пользователь заблокирован', 'error');
+                                return;
+                            }
+                            openDM(u.uid); 
+                        };
+                    }(user));
+                    chatList.appendChild(div);
+                }
             }
+            if (!found) {
+                chatList.innerHTML = '<div class="empty-state">❌ Пользователь не найден</div>';
+            }
+            return;
         }
         
+        // Поиск каналов (без @)
         var channelKeys = Object.keys(myChannels);
         for (var j = 0; j < channelKeys.length; j++) {
             var cid = channelKeys[j];
             var channel = myChannels[cid];
-            if (channel.name.toLowerCase().includes(val)) {
+            if (channel.name.toLowerCase().includes(val.toLowerCase())) {
                 found = true;
                 var div = document.createElement('div');
                 div.className = 'chat-item';
@@ -3946,11 +3999,11 @@
         }
         
         if (!found) {
-            chatList.innerHTML = '<div class="empty-state">❌ Ничего не найдено</div>';
+            chatList.innerHTML = '<div class="empty-state">❌ Канал не найден</div>';
         }
     });
 
-    console.log('🔥 Дискард — с удалением сообщений, голосовым чатом + экран, правилами в коде!');
+    console.log('🔥 Дискард — с поиском @username и названиям каналов, звуками звонка!');
 </script>
 </body>
 </html>
